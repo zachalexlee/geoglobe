@@ -2,12 +2,20 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
 function createPrismaClient() {
-  // Prisma v7 requires an adapter for postgresql
   const connectionString = process.env.DATABASE_URL
   if (!connectionString) {
-    // Return a client that will fail gracefully when used without a DB
-    // This allows the app to build without a real DATABASE_URL set
-    return new PrismaClient() as any
+    // Build time — return a proxy that throws on actual DB calls
+    // but lets the app compile successfully
+    return new Proxy({} as PrismaClient, {
+      get(_target, prop) {
+        if (prop === '$connect' || prop === '$disconnect') return () => Promise.resolve()
+        if (prop === 'then') return undefined // Not a thenable
+        return new Proxy(() => {}, {
+          get: () => () => Promise.reject(new Error('DATABASE_URL not set')),
+          apply: () => Promise.reject(new Error('DATABASE_URL not set')),
+        })
+      },
+    })
   }
   const adapter = new PrismaPg({ connectionString })
   return new PrismaClient({
