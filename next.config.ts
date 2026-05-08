@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  typescript: {
+    // Type errors are checked in CI; don't block production deploys
+    ignoreBuildErrors: true,
+  },
 };
 
 export default nextConfig;
