@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String?
+  avatar        String?
+  flag          String?
+  xp            Int       @default(0)
+  level         Int       @default(1)
+  streak        Int       @default(0)
+  longestStreak Int       @default(0)
+  elo           Int       @default(1200)
+  isPremium     Boolean   @default(false)
+  premiumUntil  DateTime?
+  region        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  scores        Score[]
+  versusAsP1    VersusMatch[] @relation("player1")
+  versusAsP2    VersusMatch[] @relation("player2")
+  groupMembers  GroupMember[]
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model DailyPuzzle {
+  id           String     @id @default(cuid())
+  date         DateTime   @unique
+  puzzleNumber Int        @unique
+  locations    Location[]
+  scores       Score[]
+  createdAt    DateTime   @default(now())
+}
+
+model Location {
+  id          String  @id @default(cuid())
+  puzzleId    String
+  order       Int
+  latitude    Float
+  longitude   Float
+  name        String
+  country     String
+  description String
+  imageUrl    String?
+  eventDate   String?
+  category    String?
+
+  puzzle DailyPuzzle @relation(fields: [puzzleId], references: [id])
+
+  @@unique([puzzleId, order])
+}
+
+model Score {
+  id          String   @id @default(cuid())
+  userId      String
+  puzzleId    String
+  totalScore  Int
+  distances   Json
+  roundScores Json
+  timeTaken   Int?
+  createdAt   DateTime @default(now())
+
+  user   User        @relation(fields: [userId], references: [id])
+  puzzle DailyPuzzle @relation(fields: [puzzleId], references: [id])
+
+  @@unique([userId, puzzleId])
+}
+
+model VersusMatch {
+  id        String   @id @default(cuid())
+  player1Id String
+  player2Id String?
+  winnerId  String?
+  isRanked  Boolean  @default(false)
+  status    String   @default("pending")
+  locations Json
+  p1Scores  Json?
+  p2Scores  Json?
+  p1Time    Int?
+  p2Time    Int?
+  eloChange Int?
+  createdAt DateTime @default(now())
+
+  player1 User  @relation("player1", fields: [player1Id], references: [id])
+  player2 User? @relation("player2", fields: [player2Id], references: [id])
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  isPublic    Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+
+  members GroupMember[]
+}
+
+model GroupMember {
+  id       String   @id @default(cuid())
+  userId   String
+  groupId  String
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  group Group @relation(fields: [groupId], references: [id])
+
+  @@unique([userId, groupId])
+}
+
+model PracticeMap {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String
+  difficulty  String
+  locations   Json
+  isOfficial  Boolean  @default(true)
+  createdById String?
+  playCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model Badge {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String
+  icon        String
+  condition   Json
+  createdAt   DateTime    @default(now())
+
+  userBadges UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  earnedAt  DateTime @default(now())
+
+  badge Badge @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+}
