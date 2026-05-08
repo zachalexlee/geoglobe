@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       orderBy: [{ isOfficial: 'desc' }, { playCount: 'desc' }],
     })
 
-    const result = maps.map((m) => ({
+    const result = maps.map((m: any) => ({
       id: m.id,
       name: m.name,
       description: m.description,

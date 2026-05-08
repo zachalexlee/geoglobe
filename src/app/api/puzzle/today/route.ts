@@ -14,7 +14,7 @@ export async function GET() {
         id: puzzle.id,
         puzzleNumber: puzzle.puzzleNumber,
         date: puzzle.date.toISOString(),
-        locations: puzzle.locations.map((loc) => ({
+        locations: puzzle.locations.map((loc: any) => ({
           id: loc.id,
           order: loc.order,
           latitude: loc.latitude,

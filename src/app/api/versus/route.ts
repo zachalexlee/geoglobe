@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       // Load today's puzzle for locations
       const puzzle = await getTodaysPuzzle()
       const locations = puzzle
-        ? puzzle.locations.slice(0, 5).map((loc) => ({
+        ? puzzle.locations.slice(0, 5).map((loc: any) => ({
             id: loc.id,
             order: loc.order,
             latitude: loc.latitude,

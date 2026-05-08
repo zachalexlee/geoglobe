@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
         },
       })
 
-      entries = scores.map((s, idx) => ({
+      entries = scores.map((s: any, idx: number) => ({
         rank: idx + 1,
         userId: s.user.id,
         username: s.user.username,
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
       })
 
       // Fetch user data for matched userIds
-      const userIds = grouped.map((g) => g.userId)
+      const userIds = grouped.map((g: any) => g.userId)
       const users = await prisma.user.findMany({
         where: { id: { in: userIds } },
         select: {
@@ -103,10 +103,10 @@ export async function GET(req: NextRequest) {
         },
       })
 
-      const userMap = new Map(users.map((u) => [u.id, u]))
+      const userMap = new Map(users.map((u: any) => [u.id, u]))
 
       entries = grouped
-        .map((g, idx) => {
+        .map((g: any, idx: number) => {
           const user = userMap.get(g.userId)
           if (!user) return null
           return {
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
         },
       })
 
-      entries = users.map((u, idx) => ({
+      entries = users.map((u: any, idx: number) => ({
         rank: idx + 1,
         userId: u.id,
         username: u.username,
@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
         },
       })
 
-      entries = users.map((u, idx) => ({
+      entries = users.map((u: any, idx: number) => ({
         rank: idx + 1,
         userId: u.id,
         username: u.username,

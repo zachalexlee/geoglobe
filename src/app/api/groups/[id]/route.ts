@@ -41,7 +41,7 @@ export async function GET(
       orderBy: { joinedAt: 'asc' },
     })
 
-    const members = memberRows.map((m) => ({
+    const members = memberRows.map((m: any) => ({
       userId: m.userId,
       username: m.user.username,
       avatar: m.user.avatar,
@@ -62,7 +62,7 @@ export async function GET(
     let leaderboard: { rank: number; userId: string; username: string; avatar: string | null; flag: string | null; score: number }[] = []
 
     if (todaysPuzzle) {
-      const memberIds = memberRows.map((m) => m.userId)
+      const memberIds = memberRows.map((m: any) => m.userId)
       const scores = await prisma.score.findMany({
         where: {
           puzzleId: todaysPuzzle.id,
@@ -81,7 +81,7 @@ export async function GET(
         },
       })
 
-      leaderboard = scores.map((s, idx) => ({
+      leaderboard = scores.map((s: any, idx: number) => ({
         rank: idx + 1,
         userId: s.user.id,
         username: s.user.username,

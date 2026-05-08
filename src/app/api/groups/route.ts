@@ -38,7 +38,7 @@ export async function GET() {
       where: { userId },
       select: { groupId: true },
     })
-    const userGroupIds = userGroupMembers.map((m) => m.groupId)
+    const userGroupIds = userGroupMembers.map((m: any) => m.groupId)
 
     // Fetch both public groups and user's groups
     const groups = await prisma.group.findMany({
@@ -54,7 +54,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     })
 
-    const result = groups.map((g) => ({
+    const result = groups.map((g: any) => ({
       id: g.id,
       name: g.name,
       code: g.code,
