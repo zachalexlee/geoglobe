@@ -1,196 +1,34 @@
-'use client'
+import { getTodaysPuzzle } from '@/lib/puzzle-generator'
+import PlayClient from './PlayClient'
 
-import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useMemo } from 'react'
-import { useGameState } from '@/hooks/useGameState'
-import GameHeader from '@/components/game/GameHeader'
-import LocationCard from '@/components/game/LocationCard'
-import ScoreDisplay from '@/components/game/ScoreDisplay'
-import ResultsScreen from '@/components/game/ResultsScreen'
-import type { Pin, ArcData } from '@/lib/globe-config'
+export default async function PlayPage() {
+  const puzzle = await getTodaysPuzzle()
 
-const GlobeView = dynamic(() => import('@/components/globe/GlobeView'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex items-center justify-center">
-      <div className="text-white/60 text-sm animate-pulse">Loading globe…</div>
-    </div>
-  ),
-})
-
-const TOTAL_ROUNDS = 5
-
-export default function PlayPage() {
-  const {
-    state,
-    initGame,
-    placePendingGuess,
-    confirmGuess,
-    nextRound,
-    resetPendingGuess,
-  } = useGameState()
-
-  // ── Fetch today's puzzle on mount ─────────────────────────────────────────
-  useEffect(() => {
-    async function loadPuzzle() {
-      try {
-        const res = await fetch('/api/puzzle/today')
-        if (!res.ok) throw new Error('Puzzle not found')
-        const puzzle = await res.json()
-        initGame(puzzle)
-      } catch (err) {
-        console.error('Failed to load puzzle:', err)
-      }
-    }
-    loadPuzzle()
-  }, [initGame])
-
-  // ── Globe click handler ───────────────────────────────────────────────────
-  const handleGlobeClick = useCallback(
-    ({ lat, lng }: { lat: number; lng: number }) => {
-      if (state.phase === 'playing') {
-        placePendingGuess(lat, lng)
-      }
-    },
-    [state.phase, placePendingGuess]
-  )
-
-  // ── Build pins ────────────────────────────────────────────────────────────
-  const pins = useMemo<Pin[]>(() => {
-    const result: Pin[] = []
-
-    // Confirmed guess pins and correct location pins from previous rounds
-    state.roundResults.forEach((r) => {
-      result.push({
-        id: `guess-${r.location.id}`,
-        lat: r.guess.lat,
-        lng: r.guess.lng,
-        color: r.color,
-        label: `Your guess: ${Math.round(r.distanceKm).toLocaleString()} km away`,
-        isGuess: true,
-      })
-      result.push({
-        id: `correct-${r.location.id}`,
-        lat: r.location.latitude,
-        lng: r.location.longitude,
-        color: '#ffffff',
-        label: r.location.name,
-        isCorrect: true,
-      })
-    })
-
-    // Pending guess pin for current round
-    if (state.pendingGuess) {
-      result.push({
-        id: 'pending',
-        lat: state.pendingGuess.lat,
-        lng: state.pendingGuess.lng,
-        color: '#818cf8',
-        label: 'Your pin (unconfirmed)',
-        isGuess: true,
-      })
-    }
-
-    // Confirmed but awaiting "Next" — round-result phase
-    if (state.phase === 'round-result' && state.confirmedGuess) {
-      const lastResult = state.roundResults[state.roundResults.length - 1]
-      if (lastResult) {
-        // Already in roundResults above, so just show the correct location
-        // (already added above) — nothing extra needed here
-      }
-    }
-
-    return result
-  }, [state.roundResults, state.pendingGuess, state.phase, state.confirmedGuess])
-
-  // ── Build arcs ────────────────────────────────────────────────────────────
-  const arcs = useMemo<ArcData[]>(() => {
-    return state.roundResults.map((r) => ({
-      startLat: r.guess.lat,
-      startLng: r.guess.lng,
-      endLat: r.location.latitude,
-      endLng: r.location.longitude,
-      color: r.color,
-    }))
-  }, [state.roundResults])
-
-  // ── Current location (null if no puzzle loaded) ───────────────────────────
-  const currentLocation = state.locations[state.currentRound] ?? null
-  const lastResult = state.roundResults[state.roundResults.length - 1] ?? null
-
-  // ── Loading state ─────────────────────────────────────────────────────────
-  if (!state.puzzleId) {
+  if (!puzzle) {
     return (
       <div className="relative w-full h-full flex items-center justify-center">
-        <p className="text-white/50 text-sm animate-pulse">Loading today&apos;s puzzle…</p>
+        <p className="text-white/50 text-sm">No puzzle available today. Check back tomorrow!</p>
       </div>
     )
   }
 
-  return (
-    <div className="relative w-full h-full">
-      {/* Sticky header */}
-      <GameHeader
-        puzzleNumber={state.puzzleNumber}
-        currentRound={state.currentRound}
-        totalRounds={TOTAL_ROUNDS}
-        totalScore={state.totalScore}
-      />
+  const puzzleData = {
+    id: puzzle.id,
+    puzzleNumber: puzzle.puzzleNumber,
+    date: puzzle.date.toISOString(),
+    locations: puzzle.locations.map((loc: any) => ({
+      id: loc.id,
+      order: loc.order,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      name: loc.name,
+      country: loc.country,
+      description: loc.description,
+      imageUrl: loc.imageUrl ?? null,
+      category: loc.category ?? null,
+      eventDate: loc.eventDate ?? null,
+    })),
+  }
 
-      {/* Globe — full screen */}
-      <GlobeView
-        pins={pins}
-        arcs={arcs}
-        onGlobeClick={handleGlobeClick}
-        disabled={state.phase !== 'playing'}
-      />
-
-      {/* Location clue card */}
-      {currentLocation && state.phase !== 'final-result' && (
-        <LocationCard
-          location={currentLocation}
-          roundNumber={state.currentRound + 1}
-          totalRounds={TOTAL_ROUNDS}
-        />
-      )}
-
-      {/* Pending guess action bar */}
-      {state.pendingGuess && state.phase === 'playing' && (
-        <div className="fixed bottom-6 inset-x-0 z-40 flex justify-center gap-3 px-4">
-          <button
-            onClick={resetPendingGuess}
-            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium border border-white/10 transition-colors"
-          >
-            ✕ Reset pin
-          </button>
-          <button
-            onClick={confirmGuess}
-            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-bold transition-colors shadow-lg"
-          >
-            ✓ Confirm guess
-          </button>
-        </div>
-      )}
-
-      {/* Round result overlay */}
-      {state.phase === 'round-result' && lastResult && (
-        <ScoreDisplay
-          distanceKm={lastResult.distanceKm}
-          score={lastResult.score}
-          color={lastResult.color}
-          onDismiss={nextRound}
-        />
-      )}
-
-      {/* Final results screen */}
-      {state.phase === 'final-result' && (
-        <ResultsScreen
-          puzzleNumber={state.puzzleNumber}
-          totalScore={state.totalScore}
-          maxScore={TOTAL_ROUNDS * 1000}
-          roundResults={state.roundResults}
-        />
-      )}
-    </div>
-  )
+  return <PlayClient puzzle={puzzleData} />
 }
