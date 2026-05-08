@@ -1,6 +1,8 @@
 import { getTodaysPuzzle } from '@/lib/puzzle-generator'
 import PlayClient from './PlayClient'
 
+export const dynamic = 'force-dynamic'
+
 export default async function PlayPage() {
   const puzzle = await getTodaysPuzzle()
 
