@@ -19,15 +19,32 @@ export async function hasTodaysPuzzle(): Promise<boolean> {
 }
 
 /**
- * Return today's puzzle with ordered locations, or null if none exists.
+ * Return today's puzzle with ordered locations.
+ * First checks for a puzzle matching today's exact date.
+ * If none exists, cycles through available puzzles based on day-of-year.
  */
 export async function getTodaysPuzzle() {
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
 
-  return prisma.dailyPuzzle.findFirst({
+  // Try exact date match first
+  const exactMatch = await prisma.dailyPuzzle.findFirst({
     where: { date: { gte: todayStart, lt: todayEnd } },
+    include: { locations: { orderBy: { order: 'asc' } } },
+  })
+  if (exactMatch) return exactMatch
+
+  // Fallback: cycle through available puzzles by day-of-year
+  const totalPuzzles = await prisma.dailyPuzzle.count()
+  if (totalPuzzles === 0) return null
+
+  const startOfYear = new Date(now.getFullYear(), 0, 1)
+  const dayOfYear = Math.floor((todayStart.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000))
+  const puzzleIndex = (dayOfYear % totalPuzzles) + 1
+
+  return prisma.dailyPuzzle.findFirst({
+    where: { puzzleNumber: puzzleIndex },
     include: { locations: { orderBy: { order: 'asc' } } },
   })
 }
