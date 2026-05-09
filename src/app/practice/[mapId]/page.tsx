@@ -6,7 +6,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { useGameState } from '@/hooks/useGameState'
 import LocationCard from '@/components/game/LocationCard'
 import ScoreDisplay from '@/components/game/ScoreDisplay'
-import type { Pin, ArcData } from '@/lib/globe-config'
+import MapStylePicker from '@/components/globe/MapStylePicker'
+import { DEFAULT_MAP_STYLE, type Pin, type ArcData, type MapStyle } from '@/lib/globe-config'
 import type { GameLocation } from '@/lib/game-engine'
 
 const GlobeView = dynamic(() => import('@/components/globe/GlobeView'), {
@@ -108,6 +109,7 @@ export default function PracticeMapPage() {
   const [mapData, setMapData] = useState<PracticeMapData | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [playKey, setPlayKey] = useState(0) // bump to restart
+  const [mapStyle, setMapStyle] = useState<MapStyle>(DEFAULT_MAP_STYLE)
 
   const {
     state,
@@ -314,7 +316,10 @@ export default function PracticeMapPage() {
         arcs={arcs}
         onGlobeClick={handleGlobeClick}
         disabled={state.phase !== 'playing'}
+        mapStyle={mapStyle}
       />
+
+      <MapStylePicker selected={mapStyle} onChange={setMapStyle} />
 
       {/* Location clue card */}
       {currentLocation && state.phase !== 'final-result' && (

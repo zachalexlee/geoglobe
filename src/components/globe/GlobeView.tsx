@@ -1,13 +1,20 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { GLOBE_CONFIG, type Pin, type ArcData } from '@/lib/globe-config'
+import {
+  GLOBE_CONFIG,
+  DEFAULT_MAP_STYLE,
+  type Pin,
+  type ArcData,
+  type MapStyle,
+} from '@/lib/globe-config'
 
 interface GlobeViewProps {
   onGlobeClick?: (coords: { lat: number; lng: number }) => void
   pins?: Pin[]
   arcs?: ArcData[]
   disabled?: boolean
+  mapStyle?: MapStyle
 }
 
 export default function GlobeView({
@@ -15,6 +22,7 @@ export default function GlobeView({
   pins = [],
   arcs = [],
   disabled = false,
+  mapStyle = DEFAULT_MAP_STYLE,
 }: GlobeViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,12 +52,14 @@ export default function GlobeView({
 
       const GlobeGL = mod.default
 
-      // Globe.GL exports a class — instantiate with `new`
       globe = new GlobeGL(containerRef.current)
 
       globe
-        // Textures
-        .globeImageUrl(GLOBE_CONFIG.imageUrl)
+        // Use tile engine for high-res maps
+        .globeTileEngineUrl(mapStyle.tileUrl)
+        // Remove the static image so tiles render cleanly
+        .globeImageUrl('')
+        // Keep bump map for terrain depth
         .bumpImageUrl(GLOBE_CONFIG.bumpImageUrl)
         .backgroundImageUrl(GLOBE_CONFIG.backgroundImageUrl)
         // Atmosphere
@@ -95,6 +105,12 @@ export default function GlobeView({
       globeRef.current = null
     }
   }, []) // intentionally empty — only run once
+
+  // ── Update tile engine when map style changes ───────────────────────────────
+  useEffect(() => {
+    if (!globeRef.current) return
+    globeRef.current.globeTileEngineUrl(mapStyle.tileUrl)
+  }, [mapStyle])
 
   // ── Sync pins ────────────────────────────────────────────────────────────────
   useEffect(() => {

@@ -1,13 +1,14 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGameState, type PuzzleData } from '@/hooks/useGameState'
 import GameHeader from '@/components/game/GameHeader'
 import LocationCard from '@/components/game/LocationCard'
 import ScoreDisplay from '@/components/game/ScoreDisplay'
 import ResultsScreen from '@/components/game/ResultsScreen'
-import type { Pin, ArcData } from '@/lib/globe-config'
+import MapStylePicker from '@/components/globe/MapStylePicker'
+import { DEFAULT_MAP_STYLE, type Pin, type ArcData, type MapStyle } from '@/lib/globe-config'
 
 const GlobeView = dynamic(
   () => import('@/components/globe/GlobeView').catch(() => {
@@ -39,6 +40,8 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
     nextRound,
     resetPendingGuess,
   } = useGameState()
+
+  const [mapStyle, setMapStyle] = useState<MapStyle>(DEFAULT_MAP_STYLE)
 
   // ── Init game with server-fetched puzzle data ──────────────────────────────
   useEffect(() => {
@@ -156,7 +159,10 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
         arcs={arcs}
         onGlobeClick={handleGlobeClick}
         disabled={state.phase !== 'playing'}
+        mapStyle={mapStyle}
       />
+
+      <MapStylePicker selected={mapStyle} onChange={setMapStyle} />
 
       {currentLocation && state.phase !== 'final-result' && (
         <LocationCard
