@@ -6,15 +6,8 @@ export type MapStyle = {
   attribution?: string
 }
 
-// Free tile providers — no API key required
+// Label-free tile providers only — no city/country names (would give away answers!)
 export const MAP_STYLES: MapStyle[] = [
-  {
-    id: 'osm-standard',
-    label: 'Street Map',
-    icon: '🗺️',
-    tileUrl: (x, y, l) => `https://tile.openstreetmap.org/${l}/${x}/${y}.png`,
-    attribution: '© OpenStreetMap contributors',
-  },
   {
     id: 'satellite',
     label: 'Satellite',
@@ -24,27 +17,19 @@ export const MAP_STYLES: MapStyle[] = [
     attribution: '© Esri, Maxar, Earthstar Geographics',
   },
   {
-    id: 'topo',
+    id: 'terrain-nolabel',
     label: 'Terrain',
     icon: '⛰️',
     tileUrl: (x, y, l) =>
-      `https://tile.opentopomap.org/${l}/${x}/${y}.png`,
-    attribution: '© OpenTopoMap (CC-BY-SA)',
+      `https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/${l}/${y}/${x}`,
+    attribution: '© Esri',
   },
   {
-    id: 'watercolor',
-    label: 'Watercolor',
-    icon: '🎨',
-    tileUrl: (x, y, l) =>
-      `https://tiles.stadiamaps.com/tiles/stamen_watercolor/${l}/${x}/${y}.jpg`,
-    attribution: '© Stadia Maps, Stamen Design',
-  },
-  {
-    id: 'dark',
+    id: 'dark-nolabel',
     label: 'Dark',
     icon: '🌑',
     tileUrl: (x, y, l) =>
-      `https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/${l}/${x}/${y}.png`,
+      `https://tiles.stadiamaps.com/tiles/alidade_smooth_dark_nolabels/${l}/${x}/${y}.png`,
     attribution: '© Stadia Maps',
   },
 ]
