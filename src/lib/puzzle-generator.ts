@@ -75,3 +75,34 @@ export async function getPuzzleByNumber(num: number) {
     include: { locations: { orderBy: { order: 'asc' } } },
   })
 }
+
+/**
+ * Return just the ID of today's active puzzle (uses the same cycling logic as getTodaysPuzzle).
+ * Useful for leaderboard queries and other lookups that only need the puzzle ID.
+ */
+export async function getTodaysPuzzleId(): Promise<string | null> {
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+
+  // Try exact date match first
+  const exactMatch = await prisma.dailyPuzzle.findFirst({
+    where: { date: { gte: todayStart, lt: todayEnd } },
+    select: { id: true },
+  })
+  if (exactMatch) return exactMatch.id
+
+  // Fallback: cycle through available puzzles by day-of-year
+  const totalPuzzles = await prisma.dailyPuzzle.count()
+  if (totalPuzzles === 0) return null
+
+  const startOfYear = new Date(now.getFullYear(), 0, 1)
+  const dayOfYear = Math.floor((todayStart.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000))
+  const puzzleIndex = (dayOfYear % totalPuzzles) + 1
+
+  const puzzle = await prisma.dailyPuzzle.findFirst({
+    where: { puzzleNumber: puzzleIndex },
+    select: { id: true },
+  })
+  return puzzle?.id ?? null
+}

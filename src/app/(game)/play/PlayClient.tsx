@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useGameState, type PuzzleData } from '@/hooks/useGameState'
 import GameHeader from '@/components/game/GameHeader'
 import LocationCard from '@/components/game/LocationCard'
@@ -44,6 +44,32 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
   useEffect(() => {
     initGame(puzzle)
   }, [initGame, puzzle])
+
+  // ── Submit score to server when game ends ──────────────────────────────────
+  const scoreSubmitted = useRef(false)
+  useEffect(() => {
+    if (state.phase !== 'final-result' || scoreSubmitted.current) return
+    scoreSubmitted.current = true
+
+    const distances = state.roundResults.map((r) => r.distanceKm)
+    const roundScores = state.roundResults.map((r) => r.score)
+
+    fetch('/api/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        puzzleId: state.puzzleId,
+        totalScore: state.totalScore,
+        distances,
+        roundScores,
+        timeTaken: Math.round((Date.now() - gameStartTime.current) / 1000),
+      }),
+    }).catch(() => {
+      // Silently fail — game result is still shown locally
+    })
+  }, [state.phase, state.puzzleId, state.totalScore, state.roundResults])
+
+  const gameStartTime = useRef(Date.now())
 
   // ── Globe click handler ───────────────────────────────────────────────────
   const handleGlobeClick = useCallback(

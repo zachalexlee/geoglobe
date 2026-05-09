@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getTodaysPuzzleId } from '@/lib/puzzle-generator'
 
 export interface LeaderboardEntry {
   rank: number
@@ -23,22 +24,15 @@ export async function GET(req: NextRequest) {
 
     if (type === 'global' || type === 'regional') {
       // Top scores for today's puzzle, optionally filtered by region
-      const now = new Date()
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+      const todaysPuzzleId = await getTodaysPuzzleId()
 
-      const todaysPuzzle = await prisma.dailyPuzzle.findFirst({
-        where: { date: { gte: todayStart, lt: todayEnd } },
-        select: { id: true },
-      })
-
-      if (!todaysPuzzle) {
+      if (!todaysPuzzleId) {
         return NextResponse.json([])
       }
 
       const scores = await prisma.score.findMany({
         where: {
-          puzzleId: todaysPuzzle.id,
+          puzzleId: todaysPuzzleId,
           ...(type === 'regional' && region
             ? { user: { region } }
             : {}),
