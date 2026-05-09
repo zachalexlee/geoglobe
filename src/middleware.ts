@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getToken } from 'next-auth/jwt'
 import { rateLimit } from './lib/rate-limiter'
 
 // ---------------------------------------------------------------------------
@@ -55,10 +54,15 @@ export default async function middleware(req: NextRequest) {
   }
 
   // ------------------------------------------------------------------
-  // Auth redirect logic using JWT token (edge-compatible)
+  // Auth redirect logic — check for session cookie presence
+  // Next-Auth v5 uses __Secure-authjs.session-token on HTTPS
   // ------------------------------------------------------------------
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET })
-  const isLoggedIn = !!token
+  const sessionCookie =
+    req.cookies.get('__Secure-authjs.session-token') ??
+    req.cookies.get('authjs.session-token') ??
+    req.cookies.get('next-auth.session-token')
+
+  const isLoggedIn = !!sessionCookie?.value
   const isAuthRoute = pathname.startsWith('/auth')
   const isApiAuth = pathname.startsWith('/api/auth')
   const isProtected = ['/play', '/leaderboard', '/groups', '/versus', '/practice', '/profile'].some(
