@@ -5,18 +5,26 @@ import { useRouter } from 'next/navigation'
 import type { GameLocation } from '@/lib/game-engine'
 
 interface VersusLobbyProps {
+  matchId: string | null
   onMatchFound: (matchId: string, locations: GameLocation[]) => void
+  onMatchCreated: (matchId: string) => void
 }
 
-export default function VersusLobby({ onMatchFound }: VersusLobbyProps) {
+export default function VersusLobby({ matchId, onMatchFound, onMatchCreated }: VersusLobbyProps) {
   const router = useRouter()
   const [isRanked, setIsRanked] = useState(false)
   const [searching, setSearching] = useState(false)
-  const [matchId, setMatchId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // ── Poll while waiting ─────────────────────────────────────────────────────
+  // Resume searching state if we already have a matchId (e.g. from parent after SSE reconnect)
+  useEffect(() => {
+    if (matchId && !searching) {
+      setSearching(true)
+    }
+  }, [matchId, searching])
+
+  // ── Fallback poll while waiting (SSE handles the fast path) ───────────────
   useEffect(() => {
     if (!searching || !matchId) return
 
@@ -33,7 +41,7 @@ export default function VersusLobby({ onMatchFound }: VersusLobbyProps) {
         } else if (data.status === 'cancelled') {
           clearInterval(pollRef.current!)
           setSearching(false)
-          setMatchId(null)
+          onMatchCreated('')  // clear matchId
           setError('Match was cancelled.')
         }
       } catch {
@@ -41,11 +49,12 @@ export default function VersusLobby({ onMatchFound }: VersusLobbyProps) {
       }
     }
 
-    pollRef.current = setInterval(poll, 2000)
+    // Poll at 5s intervals as a fallback (SSE should notify much faster)
+    pollRef.current = setInterval(poll, 5000)
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [searching, matchId, onMatchFound])
+  }, [searching, matchId, onMatchFound, onMatchCreated])
 
   // ── Start search ───────────────────────────────────────────────────────────
   async function handleFindMatch() {
@@ -71,8 +80,8 @@ export default function VersusLobby({ onMatchFound }: VersusLobbyProps) {
         setSearching(false)
         onMatchFound(data.matchId, data.locations)
       } else {
-        // Waiting — start polling
-        setMatchId(data.matchId)
+        // Waiting — set matchId so parent subscribes to SSE
+        onMatchCreated(data.matchId)
       }
     } catch {
       setSearching(false)
@@ -91,7 +100,7 @@ export default function VersusLobby({ onMatchFound }: VersusLobbyProps) {
       } catch {
         // ignore
       }
-      setMatchId(null)
+      onMatchCreated('')  // clear matchId
     }
   }
 

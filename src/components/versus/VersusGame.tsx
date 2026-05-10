@@ -10,6 +10,7 @@ import {
   type RoundResult,
 } from '@/lib/game-engine'
 import type { Pin, ArcData } from '@/lib/globe-config'
+import { useVersusEvents } from '@/hooks/useVersusEvents'
 import LocationCard from '@/components/game/LocationCard'
 import ScoreDisplay from '@/components/game/ScoreDisplay'
 
@@ -57,13 +58,30 @@ export default function VersusGame({
   const [opponentScores, setOpponentScores] = useState<number[] | null>(null)
   const [gameStartTime] = useState(() => Date.now())
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const submittedRef = useRef(false)
 
   // Determine if we're player1 or player2
   const isPlayer1 = currentUserId === player1.id
   const opponent = isPlayer1 ? player2 : player1
+
+  // ── SSE events for real-time opponent updates ────────────────────────────────
+  const handleOpponentScored = useCallback((_playerId: string) => {
+    // Fetch opponent's scores when notified via SSE
+    fetch(`/api/versus/${matchId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const scores = isPlayer1 ? data.p2Scores : data.p1Scores
+        if (scores) setOpponentScores(scores)
+      })
+      .catch(() => {})
+  }, [matchId, isPlayer1])
+
+  useVersusEvents({
+    matchId,
+    onOpponentScored: handleOpponentScored,
+    enabled: phase !== 'done',
+  })
 
   // ── Timer per round ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -94,25 +112,6 @@ export default function VersusGame({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft])
-
-  // ── Poll opponent's scores ─────────────────────────────────────────────────
-  useEffect(() => {
-    pollRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/versus/${matchId}`)
-        if (!res.ok) return
-        const data = await res.json()
-        const scores = isPlayer1 ? data.p2Scores : data.p1Scores
-        if (scores) setOpponentScores(scores)
-      } catch {
-        // ignore
-      }
-    }, 3000)
-
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
-  }, [matchId, isPlayer1])
 
   // ── Globe click ────────────────────────────────────────────────────────────
   const handleGlobeClick = useCallback(
@@ -160,9 +159,7 @@ export default function VersusGame({
       // Done — submit scores
       if (!submittedRef.current) {
         submittedRef.current = true
-        if (pollRef.current) clearInterval(pollRef.current)
         const scores = [...roundResults].map((r) => r.score)
-        // append last result score if needed
         const distances = roundResults.map((r) => r.distanceKm)
         const timeTaken = Math.round((Date.now() - gameStartTime) / 1000)
         setPhase('done')

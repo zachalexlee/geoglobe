@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getTodaysPuzzle } from '@/lib/puzzle-generator'
+import { emitMatchEvent } from '@/lib/versus-events'
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,6 +52,12 @@ export async function POST(req: NextRequest) {
           status: 'active',
           locations: locations,
         },
+      })
+
+      // Emit match-ready event so player1's SSE connection gets notified
+      emitMatchEvent(pendingMatch.id, {
+        type: 'match-ready',
+        matchId: updated.id,
       })
 
       return NextResponse.json({

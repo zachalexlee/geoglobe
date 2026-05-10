@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { GameLocation } from '@/lib/game-engine'
+import { useVersusEvents } from '@/hooks/useVersusEvents'
 import VersusLobby from '@/components/versus/VersusLobby'
 import VersusGame from '@/components/versus/VersusGame'
 import VersusResults from '@/components/versus/VersusResults'
@@ -46,7 +47,63 @@ export default function VersusClient({ userId }: VersusClientProps) {
   const [matchId, setMatchId] = useState<string | null>(null)
   const [matchData, setMatchData] = useState<MatchData | null>(null)
 
+  // Fallback poll ref (only used if SSE fails)
   const resultPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const fallbackPollActive = useRef(false)
+
+  // ── SSE event handlers ──────────────────────────────────────────────────────
+  const handleMatchReady = useCallback(() => {
+    // Match became active — fetch full match data
+    if (!matchId) return
+    fetch(`/api/versus/${matchId}`)
+      .then((r) => r.json())
+      .then((data: MatchData) => {
+        if (data.status === 'active' && data.player2) {
+          setMatchData(data)
+          setPhase('game')
+        }
+      })
+      .catch(console.error)
+  }, [matchId])
+
+  const handleOpponentScored = useCallback((_playerId: string) => {
+    // Opponent submitted — we can show a visual indicator if desired
+    // For now, just update opponent scores if we're already in results-waiting
+    if (!matchId) return
+    fetch(`/api/versus/${matchId}`)
+      .then((r) => r.json())
+      .then((data: MatchData) => {
+        if (data.status === 'complete') {
+          setMatchData(data)
+          setPhase('results')
+        }
+      })
+      .catch(console.error)
+  }, [matchId])
+
+  const handleMatchComplete = useCallback((_winnerId: string | null, _eloChange: number | null) => {
+    // Match resolved — fetch final results
+    if (!matchId) return
+    fetch(`/api/versus/${matchId}`)
+      .then((r) => r.json())
+      .then((data: MatchData) => {
+        if (data.status === 'complete') {
+          if (resultPollRef.current) clearInterval(resultPollRef.current)
+          setMatchData(data)
+          setPhase('results')
+        }
+      })
+      .catch(console.error)
+  }, [matchId])
+
+  // Connect to SSE when we have a matchId
+  useVersusEvents({
+    matchId,
+    onMatchReady: handleMatchReady,
+    onOpponentScored: handleOpponentScored,
+    onMatchComplete: handleMatchComplete,
+    enabled: !!matchId && phase !== 'results',
+  })
 
   // ── Match found callback from lobby ───────────────────────────────────────
   const handleMatchFound = useCallback(
@@ -63,7 +120,7 @@ export default function VersusClient({ userId }: VersusClientProps) {
     []
   )
 
-  // ── Game complete — submit scores then poll for results ────────────────────
+  // ── Game complete — submit scores then wait for SSE match-complete event ────
   const handleGameComplete = useCallback(
     async (scores: number[], distances: number[], timeTaken: number) => {
       if (!matchId) return
@@ -71,16 +128,27 @@ export default function VersusClient({ userId }: VersusClientProps) {
       setPhase('waiting-results')
 
       try {
-        await fetch(`/api/versus/${matchId}`, {
+        const res = await fetch(`/api/versus/${matchId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ scores, distances, timeTaken }),
         })
+        const data = await res.json()
+
+        // If the response already shows 'complete', transition immediately
+        if (data.status === 'complete') {
+          const fullData = await fetch(`/api/versus/${matchId}`).then((r) => r.json())
+          setMatchData(fullData)
+          setPhase('results')
+          return
+        }
       } catch (err) {
         console.error('Failed to submit scores:', err)
       }
 
-      // Poll for the completed match result
+      // Fallback: poll in case SSE connection dropped.
+      // SSE should deliver 'match-complete' event, but we poll as safety net.
+      fallbackPollActive.current = true
       resultPollRef.current = setInterval(async () => {
         try {
           const res = await fetch(`/api/versus/${matchId}`)
@@ -88,13 +156,14 @@ export default function VersusClient({ userId }: VersusClientProps) {
           const data: MatchData = await res.json()
           if (data.status === 'complete') {
             clearInterval(resultPollRef.current!)
+            fallbackPollActive.current = false
             setMatchData(data)
             setPhase('results')
           }
         } catch {
           // ignore
         }
-      }, 2000)
+      }, 5000) // 5s fallback poll (SSE delivers in <100ms normally)
     },
     [matchId]
   )
@@ -149,5 +218,5 @@ export default function VersusClient({ userId }: VersusClientProps) {
   }
 
   // ── Lobby ──────────────────────────────────────────────────────────────────
-  return <VersusLobby onMatchFound={handleMatchFound} />
+  return <VersusLobby matchId={matchId} onMatchFound={handleMatchFound} onMatchCreated={(id) => setMatchId(id || null)} />
 }
