@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { loginAction } from './actions'
+import GoogleSignInButton from './GoogleSignInButton'
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string; callbackUrl?: string }> }) {
   const params = await searchParams
@@ -24,6 +25,19 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
             {error}
           </div>
         )}
+
+        {/* Google OAuth Button */}
+        <GoogleSignInButton callbackUrl={callbackUrl} />
+
+        {/* Divider */}
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-700" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="bg-gray-900 px-3 text-gray-500">or continue with email</span>
+          </div>
+        </div>
 
         <form action={loginAction} className="space-y-4">
           <input type="hidden" name="callbackUrl" value={callbackUrl} />

@@ -65,7 +65,7 @@ export default async function middleware(req: NextRequest) {
   const isLoggedIn = !!sessionCookie?.value
   const isAuthRoute = pathname.startsWith('/auth')
   const isApiAuth = pathname.startsWith('/api/auth')
-  const isProtected = ['/play', '/leaderboard', '/groups', '/versus', '/practice', '/profile'].some(
+  const isProtected = ['/play', '/groups', '/versus', '/profile'].some(
     (path) => pathname.startsWith(path),
   )
 

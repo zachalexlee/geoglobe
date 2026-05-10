@@ -50,23 +50,34 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
 
   // ── Submit final score to server when game ends ────────────────────────────
   const scoreSubmitted = useRef(false)
+  const gameStartTime = useRef<number | null>(null)
+
+  // Set gameStartTime when game actually begins (first round is visible)
+  useEffect(() => {
+    if (state.phase === 'playing' && state.puzzleId && gameStartTime.current === null) {
+      gameStartTime.current = Date.now()
+    }
+  }, [state.phase, state.puzzleId])
+
   useEffect(() => {
     if (state.phase !== 'final-result' || scoreSubmitted.current) return
     scoreSubmitted.current = true
+
+    const timeTaken = gameStartTime.current
+      ? Math.round((Date.now() - gameStartTime.current) / 1000)
+      : 0
 
     fetch('/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         puzzleId: state.puzzleId,
-        timeTaken: Math.round((Date.now() - gameStartTime.current) / 1000),
+        timeTaken,
       }),
     }).catch(() => {
       // Silently fail — game result is still shown locally
     })
   }, [state.phase, state.puzzleId])
-
-  const gameStartTime = useRef(Date.now())
 
   // ── Globe click handler ───────────────────────────────────────────────────
   const handleGlobeClick = useCallback(

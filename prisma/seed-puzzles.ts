@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import extraPuzzles from './extra-puzzles'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
 const prisma = new PrismaClient({ adapter })
@@ -108,7 +109,7 @@ const puzzles = [
   },
 ]
 
-// Generate 20 more puzzles (11–30) covering remaining themes
+// Generate more puzzles covering remaining themes
 const morePuzzles = [
   {
     date: new Date('2025-01-11'), puzzleNumber: 11,
@@ -162,7 +163,7 @@ const morePuzzles = [
   },
 ]
 
-const allPuzzles = [...puzzles, ...morePuzzles]
+const allPuzzles = [...puzzles, ...morePuzzles, ...extraPuzzles]
 
 async function main() {
   console.log(`Seeding ${allPuzzles.length} puzzles...`)

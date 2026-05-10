@@ -11,12 +11,23 @@
 type RateLimitEntry = { count: number; resetAt: number }
 const store = new Map<string, RateLimitEntry>()
 
+/** Track last cleanup time for lazy cleanup strategy */
+let lastCleanup = Date.now()
+const CLEANUP_INTERVAL_MS = 60_000 // Run cleanup at most every 60 seconds
+
 export function rateLimit(
   key: string,
   limit: number,
   windowMs: number,
 ): { allowed: boolean; remaining: number; resetAt: number } {
   const now = Date.now()
+
+  // Lazy cleanup: purge expired entries every 60 seconds
+  if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
+    cleanupRateLimits()
+    lastCleanup = now
+  }
+
   const entry = store.get(key)
 
   if (!entry || now > entry.resetAt) {
@@ -34,7 +45,7 @@ export function rateLimit(
 
 /**
  * Remove expired entries from the store to avoid unbounded memory growth.
- * Call this periodically (e.g. from a cron job or a startup hook).
+ * Called automatically via lazy cleanup in rateLimit().
  */
 export function cleanupRateLimits() {
   const now = Date.now()
