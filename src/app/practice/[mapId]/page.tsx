@@ -8,7 +8,7 @@ import LocationCard from '@/components/game/LocationCard'
 import ScoreDisplay from '@/components/game/ScoreDisplay'
 import MapStylePicker from '@/components/globe/MapStylePicker'
 import { DEFAULT_MAP_STYLE, type Pin, type ArcData, type MapStyle } from '@/lib/globe-config'
-import type { GameLocation } from '@/lib/game-engine'
+import type { GameLocationFull as GameLocation } from '@/hooks/useGameState'
 
 const GlobeView = dynamic(() => import('@/components/globe/GlobeView'), {
   ssr: false,

@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import type { GameLocation } from '@/lib/game-engine'
+import type { LocationClue } from '@/hooks/useGameState'
 
 interface LocationCardProps {
-  location: GameLocation
+  location: LocationClue
   roundNumber: number   // 1-based
   totalRounds: number
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { RoundResult } from '@/lib/game-engine'
+import type { RoundResult } from '@/hooks/useGameState'
 import { generateShareText, copyShareText } from '@/lib/share-generator'
 
 interface ShareCardProps {

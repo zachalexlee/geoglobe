@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { RoundResult } from '@/lib/game-engine'
+import type { RoundResult } from '@/hooks/useGameState'
 import ShareCard from './ShareCard'
 
 interface ResultsScreenProps {

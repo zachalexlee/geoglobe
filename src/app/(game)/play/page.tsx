@@ -14,6 +14,8 @@ export default async function PlayPage() {
     )
   }
 
+  // SECURITY: Only send clue data to the client — NO coordinates.
+  // The lat/lng are only revealed after each guess via /api/guess.
   const puzzleData = {
     id: puzzle.id,
     puzzleNumber: puzzle.puzzleNumber,
@@ -21,14 +23,13 @@ export default async function PlayPage() {
     locations: puzzle.locations.map((loc: any) => ({
       id: loc.id,
       order: loc.order,
-      latitude: loc.latitude,
-      longitude: loc.longitude,
       name: loc.name,
       country: loc.country,
       description: loc.description,
       imageUrl: loc.imageUrl ?? null,
       category: loc.category ?? null,
       eventDate: loc.eventDate ?? null,
+      // latitude and longitude intentionally omitted — server-side only
     })),
   }
 

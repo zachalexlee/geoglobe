@@ -36,7 +36,7 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
     state,
     initGame,
     placePendingGuess,
-    confirmGuess,
+    submitGuess,
     nextRound,
     resetPendingGuess,
   } = useGameState()
@@ -48,29 +48,23 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
     initGame(puzzle)
   }, [initGame, puzzle])
 
-  // ── Submit score to server when game ends ──────────────────────────────────
+  // ── Submit final score to server when game ends ────────────────────────────
   const scoreSubmitted = useRef(false)
   useEffect(() => {
     if (state.phase !== 'final-result' || scoreSubmitted.current) return
     scoreSubmitted.current = true
-
-    const distances = state.roundResults.map((r) => r.distanceKm)
-    const roundScores = state.roundResults.map((r) => r.score)
 
     fetch('/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         puzzleId: state.puzzleId,
-        totalScore: state.totalScore,
-        distances,
-        roundScores,
         timeTaken: Math.round((Date.now() - gameStartTime.current) / 1000),
       }),
     }).catch(() => {
       // Silently fail — game result is still shown locally
     })
-  }, [state.phase, state.puzzleId, state.totalScore, state.roundResults])
+  }, [state.phase, state.puzzleId])
 
   const gameStartTime = useRef(Date.now())
 
@@ -83,6 +77,22 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
     },
     [state.phase, placePendingGuess]
   )
+
+  // ── Confirm guess (calls server) ─────────────────────────────────────────
+  const handleConfirmGuess = useCallback(async () => {
+    if (!state.pendingGuess || state.phase !== 'playing') return
+
+    const currentLocation = state.locations[state.currentRound]
+    if (!currentLocation) return
+
+    await submitGuess(
+      state.puzzleId,
+      state.currentRound,
+      state.pendingGuess.lat,
+      state.pendingGuess.lng,
+      currentLocation
+    )
+  }, [state.pendingGuess, state.phase, state.puzzleId, state.currentRound, state.locations, submitGuess])
 
   // ── Build pins ────────────────────────────────────────────────────────────
   const pins = useMemo<Pin[]>(() => {
@@ -181,11 +191,19 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
             ✕ Reset pin
           </button>
           <button
-            onClick={confirmGuess}
+            onClick={handleConfirmGuess}
             className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-bold transition-colors shadow-lg"
           >
             ✓ Confirm guess
           </button>
+        </div>
+      )}
+
+      {state.phase === 'submitting' && (
+        <div className="fixed bottom-6 inset-x-0 z-40 flex justify-center px-4">
+          <div className="px-6 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium animate-pulse">
+            Submitting guess…
+          </div>
         </div>
       )}
 

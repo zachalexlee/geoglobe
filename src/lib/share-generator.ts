@@ -1,4 +1,7 @@
-import type { RoundResult } from './game-engine'
+// Minimal type for share generation — only needs distance per round
+interface ShareRoundResult {
+  distanceKm: number
+}
 
 // Returns emoji block for a distance
 function distanceEmoji(distanceKm: number): string {
@@ -12,7 +15,7 @@ function distanceEmoji(distanceKm: number): string {
 export function generateShareText(
   puzzleNumber: number,
   totalScore: number,
-  roundResults: RoundResult[],
+  roundResults: ShareRoundResult[],
   streak: number
 ): string {
   const lines = [
