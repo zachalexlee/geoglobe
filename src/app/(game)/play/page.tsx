@@ -1,35 +1,28 @@
-import { getTodaysPuzzle } from '@/lib/puzzle-generator'
+import { getDailyCities, todayDateStr, getPuzzleNumber } from '@/lib/daily-cities'
 import PlayClient from './PlayClient'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PlayPage() {
-  const puzzle = await getTodaysPuzzle()
+  const dateStr = todayDateStr()
+  const cities = getDailyCities(dateStr)
+  const puzzleNumber = getPuzzleNumber(dateStr)
 
-  if (!puzzle) {
-    return (
-      <div className="relative w-full h-full flex items-center justify-center">
-        <p className="text-white/50 text-sm">No puzzle available today. Check back tomorrow!</p>
-      </div>
-    )
-  }
-
-  // SECURITY: Only send clue data to the client — NO coordinates.
+  // SECURITY: Only send city names to the client — NO coordinates.
   // The lat/lng are only revealed after each guess via /api/guess.
   const puzzleData = {
-    id: puzzle.id,
-    puzzleNumber: puzzle.puzzleNumber,
-    date: puzzle.date.toISOString(),
-    locations: puzzle.locations.map((loc: any) => ({
-      id: loc.id,
-      order: loc.order,
-      name: loc.name,
-      country: loc.country,
-      description: loc.description,
-      imageUrl: loc.imageUrl ?? null,
-      category: loc.category ?? null,
-      eventDate: loc.eventDate ?? null,
-      // latitude and longitude intentionally omitted — server-side only
+    id: `daily-${dateStr}`,
+    puzzleNumber,
+    date: new Date(dateStr).toISOString(),
+    locations: cities.map((city, i) => ({
+      id: `city-${dateStr}-${i}`,
+      order: i + 1,
+      name: city.name,
+      country: city.country,
+      description: `Locate ${city.name} on the globe`,
+      imageUrl: null,
+      category: null,
+      eventDate: null,
     })),
   }
 

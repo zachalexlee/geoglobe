@@ -16,11 +16,11 @@ export function haversineDistance(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-// Score: 1000 for within 50 km, 0 for 5000 km+, linear between
+// Score: 100 for within 50 km, 0 for 5000 km+, linear between
 export function calculateScore(distanceKm: number): number {
-  if (distanceKm <= 50) return 1000
+  if (distanceKm <= 50) return 100
   if (distanceKm >= 5000) return 0
-  return Math.max(0, Math.round(1000 - ((distanceKm - 50) / 4950) * 1000))
+  return Math.max(0, Math.round(100 - ((distanceKm - 50) / 4950) * 100))
 }
 
 // Color feedback (Globle-style heat)

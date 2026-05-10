@@ -112,18 +112,32 @@ export default function GlobeView({
     globeRef.current.globeTileEngineUrl(mapStyle.tileUrl)
   }, [mapStyle])
 
-  // ── Sync pins ────────────────────────────────────────────────────────────────
+  // ── Sync pins (using HTML layer for fixed-size markers) ─────────────────────
   useEffect(() => {
     if (!globeRef.current) return
 
     globeRef.current
-      .pointsData(pins)
-      .pointLat('lat')
-      .pointLng('lng')
-      .pointColor('color')
-      .pointAltitude(0.01)
-      .pointRadius(0.5)
-      .pointLabel((d: Pin) => d.label ?? '')
+      .htmlElementsData(pins)
+      .htmlLat('lat')
+      .htmlLng('lng')
+      .htmlAltitude(0.01)
+      .htmlElement((d: Pin) => {
+        const el = document.createElement('div')
+        const size = d.isCorrect ? 14 : 18
+        el.style.width = `${size}px`
+        el.style.height = `${size}px`
+        el.style.borderRadius = '50%'
+        el.style.background = d.color
+        el.style.border = '2px solid rgba(255,255,255,0.8)'
+        el.style.boxShadow = `0 0 8px ${d.color}80`
+        el.style.transform = 'translate(-50%, -50%)'
+        el.style.pointerEvents = 'none'
+        if (d.isGuess && !d.isCorrect) {
+          // Pulse animation for user's pending/confirmed guess
+          el.style.animation = 'pulse 2s infinite'
+        }
+        return el
+      })
   }, [pins])
 
   // ── Sync arcs ────────────────────────────────────────────────────────────────

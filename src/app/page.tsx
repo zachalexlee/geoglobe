@@ -76,7 +76,7 @@ const features = [
   {
     icon: <TrophyIcon />,
     title: "Daily Challenge",
-    desc: "5 historical locations every day. Race against the world and climb the leaderboard.",
+    desc: "5 random cities every day. Pin them on the globe and score up to 500 points.",
     href: "/play",
   },
   {

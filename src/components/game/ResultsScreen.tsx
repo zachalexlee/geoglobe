@@ -108,7 +108,7 @@ export default function ResultsScreen({
             Round Breakdown
           </p>
           {roundResults.map((result, i) => {
-            const barWidth = Math.round((result.score / 1000) * 100)
+            const barWidth = Math.round((result.score / 100) * 100)
             return (
               <div
                 key={result.location.id}

@@ -72,9 +72,9 @@ export function computeTotalFromGuesses(
  * using the canonical server-side scoring formula.
  *
  * Scoring formula:
- *   dist <= 50 km  → 1000 pts
+ *   dist <= 50 km  → 100 pts
  *   dist >= 5000 km → 0 pts
- *   otherwise      → Math.max(0, Math.round(1000 - ((dist - 50) / 4950) * 1000))
+ *   otherwise      → Math.max(0, Math.round(100 - ((dist - 50) / 4950) * 100))
  */
 export function validateScoreSubmission(submission: ScoreSubmission): ValidationResult {
   if (submission.distances.length !== 5 || submission.roundScores.length !== 5) {

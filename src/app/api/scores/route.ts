@@ -99,17 +99,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 })
       }
 
-      // Check if user played yesterday
+      // Check if user played yesterday (using puzzleId format "daily-YYYY-MM-DD")
       const now = new Date()
-      const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
-      const yesterdayEnd = new Date(yesterdayStart.getTime() + 24 * 60 * 60 * 1000)
+      const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+      const yesterdayStr = yesterday.toISOString().split('T')[0]
+      const yesterdayPuzzleId = `daily-${yesterdayStr}`
 
       const yesterdayScore = await prisma.score.findFirst({
         where: {
           userId,
-          puzzle: {
-            date: { gte: yesterdayStart, lt: yesterdayEnd },
-          },
+          puzzleId: yesterdayPuzzleId,
         },
       })
 

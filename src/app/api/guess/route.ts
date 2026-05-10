@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
 import { haversineDistance, calculateScore, proximityColor } from '@/lib/game-engine'
+import { getDailyCities, todayDateStr } from '@/lib/daily-cities'
 import { storeGuess, hasGuessForRound } from '@/lib/guess-store'
 
 interface GuessBody {
@@ -47,18 +47,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Fetch the puzzle and get the specific location for this round
-    const puzzle = await prisma.dailyPuzzle.findUnique({
-      where: { id: puzzleId },
-      include: { locations: { orderBy: { order: 'asc' } } },
-    })
+    // Extract the date from the puzzleId (format: "daily-YYYY-MM-DD")
+    const dateStr = puzzleId.startsWith('daily-') 
+      ? puzzleId.slice(6) 
+      : todayDateStr()
 
-    if (!puzzle) {
-      return NextResponse.json({ error: 'Puzzle not found' }, { status: 404 })
-    }
+    // Get today's cities and find the one for this round
+    const cities = getDailyCities(dateStr)
+    const city = cities[round]
 
-    const location = puzzle.locations[round]
-    if (!location) {
+    if (!city) {
       return NextResponse.json({ error: 'Invalid round number' }, { status: 400 })
     }
 
@@ -66,8 +64,8 @@ export async function POST(req: NextRequest) {
     const distance = haversineDistance(
       guessLat,
       guessLng,
-      location.latitude,
-      location.longitude
+      city.latitude,
+      city.longitude
     )
     const score = calculateScore(distance)
     const color = proximityColor(distance)
@@ -77,8 +75,8 @@ export async function POST(req: NextRequest) {
       round,
       guessLat,
       guessLng,
-      actualLat: location.latitude,
-      actualLng: location.longitude,
+      actualLat: city.latitude,
+      actualLng: city.longitude,
       distance,
       score,
       timestamp: Date.now(),
@@ -89,10 +87,10 @@ export async function POST(req: NextRequest) {
       distance: Math.round(distance * 100) / 100,
       score,
       color,
-      actualLat: location.latitude,
-      actualLng: location.longitude,
-      locationName: location.name,
-      locationCountry: location.country,
+      actualLat: city.latitude,
+      actualLng: city.longitude,
+      locationName: city.name,
+      locationCountry: city.country,
     })
   } catch (error) {
     console.error('guess POST error:', error)

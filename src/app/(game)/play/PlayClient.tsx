@@ -231,7 +231,7 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
         <ResultsScreen
           puzzleNumber={state.puzzleNumber}
           totalScore={state.totalScore}
-          maxScore={TOTAL_ROUNDS * 1000}
+          maxScore={TOTAL_ROUNDS * 100}
           roundResults={state.roundResults}
         />
       )}

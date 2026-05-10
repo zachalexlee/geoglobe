@@ -1,30 +1,26 @@
 import { NextResponse } from 'next/server'
-import { getTodaysPuzzle } from '@/lib/puzzle-generator'
+import { getDailyCities, todayDateStr, getPuzzleNumber } from '@/lib/daily-cities'
 
 export async function GET() {
   try {
-    const puzzle = await getTodaysPuzzle()
-
-    if (!puzzle) {
-      return NextResponse.json({ error: 'No puzzle found for today' }, { status: 404 })
-    }
+    const dateStr = todayDateStr()
+    const cities = getDailyCities(dateStr)
+    const puzzleNumber = getPuzzleNumber(dateStr)
 
     return NextResponse.json(
       {
-        id: puzzle.id,
-        puzzleNumber: puzzle.puzzleNumber,
-        date: puzzle.date.toISOString(),
-        locations: puzzle.locations.map((loc: any) => ({
-          id: loc.id,
-          order: loc.order,
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-          name: loc.name,
-          country: loc.country,
-          description: loc.description,
-          imageUrl: loc.imageUrl ?? null,
-          category: loc.category ?? null,
-          eventDate: loc.eventDate ?? null,
+        id: `daily-${dateStr}`,
+        puzzleNumber,
+        date: new Date(dateStr).toISOString(),
+        locations: cities.map((city, i) => ({
+          id: `city-${dateStr}-${i}`,
+          order: i + 1,
+          name: city.name,
+          country: city.country,
+          description: `Locate ${city.name} on the globe`,
+          imageUrl: null,
+          category: null,
+          eventDate: null,
         })),
       },
       {

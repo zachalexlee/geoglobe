@@ -72,7 +72,6 @@ model DailyPuzzle {
   date         DateTime   @unique
   puzzleNumber Int        @unique
   locations    Location[]
-  scores       Score[]
   createdAt    DateTime   @default(now())
 }
 
@@ -104,8 +103,7 @@ model Score {
   timeTaken   Int?
   createdAt   DateTime @default(now())
 
-  user   User        @relation(fields: [userId], references: [id])
-  puzzle DailyPuzzle @relation(fields: [puzzleId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, puzzleId])
 }
