@@ -15,6 +15,17 @@ export async function GET(
       )
     }
 
+    // Prevent future puzzle lookups (anti-cheat)
+    const requestedDate = new Date(date + 'T00:00:00Z')
+    const today = new Date()
+    today.setUTCHours(0, 0, 0, 0)
+    if (requestedDate > today) {
+      return NextResponse.json(
+        { error: 'Cannot view future puzzles' },
+        { status: 403 }
+      )
+    }
+
     const cities = getDailyCities(date)
     const puzzleNumber = getPuzzleNumber(date)
 

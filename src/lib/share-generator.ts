@@ -19,7 +19,7 @@ export function generateShareText(
   streak: number
 ): string {
   const lines = [
-    `🌍 GeoGlobe #${puzzleNumber} — ${totalScore.toLocaleString()}/5,000`,
+    `🌍 GeoGlobe #${puzzleNumber} — ${totalScore.toLocaleString()}/500`,
     '',
     ...roundResults.map(r => {
       const km = Math.round(r.distanceKm).toLocaleString()

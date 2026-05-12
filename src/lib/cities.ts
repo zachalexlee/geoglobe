@@ -150,8 +150,6 @@ export const WORLD_CITIES: City[] = [
   { name: 'Baku', country: 'Azerbaijan', latitude: 40.4093, longitude: 49.8671 },
 
   // ─── More interesting cities ────────────────────────────────
-  { name: 'Havana', country: 'Cuba', latitude: 23.1136, longitude: -82.3666 },
-  { name: 'Lisbon', country: 'Portugal', latitude: 38.7223, longitude: -9.1393 },
   { name: 'Porto', country: 'Portugal', latitude: 41.1579, longitude: -8.6291 },
   { name: 'Florence', country: 'Italy', latitude: 43.7696, longitude: 11.2558 },
   { name: 'Dubrovnik', country: 'Croatia', latitude: 42.6507, longitude: 18.0944 },

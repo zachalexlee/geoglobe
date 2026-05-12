@@ -1,4 +1,4 @@
-// ── Weak Spot Analytics ────────────────────────────────────────────────────────
+import { getDailyCities } from './daily-cities'
 
 /**
  * Derive a continent/region name from a lat/lng coordinate.
@@ -21,7 +21,7 @@ export interface WeakSpotResult {
   weakCategories: string[]
   /** Regions ordered from weakest → strongest (only those with ≥ 1 data point) */
   weakRegions: string[]
-  /** Average score across all fetched games (0–5000 scale, 5 rounds × 1000) */
+  /** Average score across all fetched games (0–500 scale, 5 rounds × 100) */
   avgScore: number
   /** Total number of scored games */
   totalGames: number
@@ -36,32 +36,24 @@ export interface WeakSpotResult {
 /**
  * Analyse a user's last 30 puzzle scores to surface weak categories and regions.
  *
- * The Score model stores `roundScores` (Json array) and `distances` (Json array),
- * and each score links to a DailyPuzzle that owns Location rows with `category`,
- * `latitude`, and `longitude`.
+ * The Score model stores `roundScores` (Json array) and `distances` (Json array).
+ * The puzzleId is in "daily-YYYY-MM-DD" format, so we reconstruct locations
+ * from the deterministic city generator rather than a DB relation.
  *
  * Strategy:
- *  1. Fetch the 30 most-recent scores, include puzzle → locations.
- *  2. For each score, pair round scores with the corresponding location.
- *  3. Accumulate per-category and per-region averages.
- *  4. Return sorted weak-spot lists + raw stats.
+ *  1. Fetch the 30 most-recent scores.
+ *  2. For each score, derive the puzzle date from puzzleId and get cities.
+ *  3. Pair round scores with the corresponding location.
+ *  4. Accumulate per-category and per-region averages.
+ *  5. Return sorted weak-spot lists + raw stats.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function analyzeWeakSpots(userId: string, prisma: any): Promise<WeakSpotResult> {
-  // Fetch the 30 most-recent scores, pulling in the puzzle's locations
+  // Fetch the 30 most-recent scores
   const scores = await prisma.score.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
     take: 30,
-    include: {
-      puzzle: {
-        include: {
-          locations: {
-            orderBy: { order: 'asc' },
-          },
-        },
-      },
-    },
   })
 
   const totalGames: number = scores.length
@@ -78,29 +70,30 @@ export async function analyzeWeakSpots(userId: string, prisma: any): Promise<Wea
       ? (score.roundScores as number[])
       : []
 
-    const locations: Array<{
-      order: number
-      category: string | null
-      latitude: number
-      longitude: number
-    }> = score.puzzle?.locations ?? []
+    // Derive locations from the deterministic city generator using puzzleId
+    // puzzleId format: "daily-YYYY-MM-DD"
+    const dateMatch = (score.puzzleId as string).match(/^daily-(\d{4}-\d{2}-\d{2})$/)
+    if (!dateMatch) continue // skip non-daily scores (e.g. practice)
+    const cities = getDailyCities(dateMatch[1])
 
-    // Pair each round score with its location (ordered by `location.order`, 0-indexed)
-    for (let i = 0; i < locations.length; i++) {
-      const loc = locations[i]
+    // Pair each round score with its city
+    for (let i = 0; i < cities.length; i++) {
+      const city = cities[i]
       const roundScore = roundScores[i] ?? 0
 
-      // ── Category accumulator ──────────────────────────────────────────────
-      const cat = (loc.category ?? 'unknown').toLowerCase()
-      if (!categoryAcc[cat]) categoryAcc[cat] = { sum: 0, count: 0 }
-      categoryAcc[cat].sum += roundScore
-      categoryAcc[cat].count += 1
+      // ── Category accumulator (use region as category since cities don't have categories) ──
+      const region = latLngToRegion(city.latitude, city.longitude)
 
       // ── Region accumulator ───────────────────────────────────────────────
-      const region = latLngToRegion(loc.latitude, loc.longitude)
       if (!regionAcc[region]) regionAcc[region] = { sum: 0, count: 0 }
       regionAcc[region].sum += roundScore
       regionAcc[region].count += 1
+
+      // ── Country as a category proxy ──────────────────────────────────────
+      const cat = city.country.toLowerCase()
+      if (!categoryAcc[cat]) categoryAcc[cat] = { sum: 0, count: 0 }
+      categoryAcc[cat].sum += roundScore
+      categoryAcc[cat].count += 1
     }
   }
 

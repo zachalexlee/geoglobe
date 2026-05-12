@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getTodaysPuzzle } from '@/lib/puzzle-generator'
+import { getDailyCities, todayDateStr } from '@/lib/daily-cities'
 import { emitMatchEvent } from '@/lib/versus-events'
 
 export async function POST(req: NextRequest) {
@@ -28,21 +28,20 @@ export async function POST(req: NextRequest) {
     })
 
     if (pendingMatch) {
-      // Load today's puzzle for locations
-      const puzzle = await getTodaysPuzzle()
-      const locations = puzzle
-        ? puzzle.locations.slice(0, 5).map((loc: any) => ({
-            id: loc.id,
-            order: loc.order,
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-            name: loc.name,
-            country: loc.country,
-            description: loc.description,
-            imageUrl: loc.imageUrl ?? null,
-            category: loc.category ?? null,
-          }))
-        : []
+      // Use the deterministic city generator for today's cities
+      const dateStr = todayDateStr()
+      const cities = getDailyCities(dateStr)
+      const locations = cities.slice(0, 5).map((city, i) => ({
+        id: `versus-${dateStr}-${i}`,
+        order: i + 1,
+        latitude: city.latitude,
+        longitude: city.longitude,
+        name: city.name,
+        country: city.country,
+        description: `Locate ${city.name} on the globe`,
+        imageUrl: null,
+        category: null,
+      }))
 
       // Join the match
       const updated = await prisma.versusMatch.update({

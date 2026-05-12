@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { levelFromXp, xpInCurrentLevel, xpToNextLevel as calcXpToNext } from '@/lib/xp-system'
+import { getPuzzleNumber } from '@/lib/daily-cities'
 import XpBar from '@/components/profile/XpBar'
 import BadgeGrid from '@/components/profile/BadgeGrid'
 import Link from 'next/link'
@@ -35,7 +36,6 @@ export default async function ProfilePage() {
       scores: {
         orderBy: { createdAt: 'desc' },
         take: 10,
-        include: { puzzle: { select: { date: true, puzzleNumber: true } } },
       },
     },
   })
@@ -193,16 +193,22 @@ export default async function ProfilePage() {
                 id: string
                 totalScore: number
                 timeTaken: number | null
-                puzzle: { puzzleNumber: number; date: Date }
+                puzzleId: string
+                createdAt: Date
               }) => {
-                const pct = Math.round((score.totalScore / 5000) * 100)
+                const pct = Math.round((score.totalScore / 500) * 100)
+                // Derive puzzle number and date from puzzleId (format: "daily-YYYY-MM-DD")
+                const dateStr = score.puzzleId.startsWith('daily-')
+                  ? score.puzzleId.slice(6)
+                  : null
+                const puzzleNum = dateStr ? getPuzzleNumber(dateStr) : null
                 return (
                   <div
                     key={score.id}
                     className="grid grid-cols-4 items-center px-2 py-2.5 rounded-lg hover:bg-white/5 transition-colors"
                   >
                     <span className="text-zinc-300 text-sm font-medium">
-                      #{score.puzzle.puzzleNumber}
+                      {puzzleNum ? `#${puzzleNum}` : '—'}
                     </span>
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-white font-bold tabular-nums text-sm">
@@ -212,7 +218,7 @@ export default async function ProfilePage() {
                         <div
                           className="h-full rounded-full"
                           style={{
-                            width: `${pct}%`,
+                            width: `${Math.min(pct, 100)}%`,
                             background: pct >= 90 ? '#22c55e' : pct >= 60 ? '#3b82f6' : '#f59e0b',
                           }}
                         />
@@ -222,10 +228,15 @@ export default async function ProfilePage() {
                       {formatTime(score.timeTaken)}
                     </span>
                     <span className="text-zinc-600 text-xs text-right">
-                      {new Date(score.puzzle.date).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
+                      {dateStr
+                        ? new Date(dateStr).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : new Date(score.createdAt).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
                     </span>
                   </div>
                 )

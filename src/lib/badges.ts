@@ -40,15 +40,15 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
   },
   {
     name: 'Perfect Round',
-    description: 'Score 1000 on a single location',
+    description: 'Score 100 on a single location',
     icon: '🎯',
     condition: { type: 'perfect_round', value: 1 },
   },
   {
     name: 'Flawless',
-    description: 'Score 5000 on a daily puzzle',
+    description: 'Score 500 on a daily puzzle (perfect game)',
     icon: '💎',
-    condition: { type: 'perfect_game', value: 5000 },
+    condition: { type: 'perfect_game', value: 500 },
   },
   {
     name: 'On a Roll',
@@ -129,7 +129,7 @@ export async function checkAndAwardBadges(
         qualifies = gamesPlayed >= condition.value
         break
       case 'perfect_round':
-        qualifies = roundScores.some((s) => s >= 1000)
+        qualifies = roundScores.some((s) => s >= 100)
         break
       case 'perfect_game':
         qualifies = totalScore >= condition.value

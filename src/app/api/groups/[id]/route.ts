@@ -50,46 +50,38 @@ export async function GET(
     }))
 
     // Today's leaderboard: scores for today's puzzle, filtered to group members
-    const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
-
-    const todaysPuzzle = await prisma.dailyPuzzle.findFirst({
-      where: { date: { gte: todayStart, lt: todayEnd } },
-      select: { id: true },
-    })
+    const todayStr = new Date().toISOString().split('T')[0]
+    const todaysPuzzleId = `daily-${todayStr}`
 
     let leaderboard: { rank: number; userId: string; username: string; avatar: string | null; flag: string | null; score: number }[] = []
 
-    if (todaysPuzzle) {
-      const memberIds = memberRows.map((m: any) => m.userId)
-      const scores = await prisma.score.findMany({
-        where: {
-          puzzleId: todaysPuzzle.id,
-          userId: { in: memberIds },
-        },
-        orderBy: [{ totalScore: 'desc' }, { timeTaken: 'asc' }],
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              avatar: true,
-              flag: true,
-            },
+    const memberIds = memberRows.map((m: any) => m.userId)
+    const scores = await prisma.score.findMany({
+      where: {
+        puzzleId: todaysPuzzleId,
+        userId: { in: memberIds },
+      },
+      orderBy: [{ totalScore: 'desc' }, { timeTaken: 'asc' }],
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+            flag: true,
           },
         },
-      })
+      },
+    })
 
-      leaderboard = scores.map((s: any, idx: number) => ({
-        rank: idx + 1,
-        userId: s.user.id,
-        username: s.user.username,
-        avatar: s.user.avatar,
-        flag: s.user.flag,
-        score: s.totalScore,
-      }))
-    }
+    leaderboard = scores.map((s: any, idx: number) => ({
+      rank: idx + 1,
+      userId: s.user.id,
+      username: s.user.username,
+      avatar: s.user.avatar,
+      flag: s.user.flag,
+      score: s.totalScore,
+    }))
 
     return NextResponse.json({
       group: {
