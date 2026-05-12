@@ -4,6 +4,7 @@ import "./globals.css";
 import Providers from "@/components/layout/Providers";
 import NavBar from "@/components/layout/NavBar";
 import MobileNav from "@/components/layout/MobileNav";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,6 +60,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[#0a0a0a] text-white">
         <Providers>
+          <ServiceWorkerRegistration />
           <NavBar />
           <main className="flex-1 pb-16 md:pb-0">{children}</main>
           <MobileNav />
