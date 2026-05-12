@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
+import { sendWelcomeEmail, sendReferralRewardEmail } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,7 +59,19 @@ export async function POST(req: NextRequest) {
         where: { id: referrer.id },
         data: { xp: { increment: 100 } },
       })
+
+      // Notify the referrer via email (fire-and-forget)
+      const referrerUser = await prisma.user.findUnique({
+        where: { id: referrer.id },
+        select: { email: true, username: true, notifyEmail: true },
+      })
+      if (referrerUser?.notifyEmail) {
+        sendReferralRewardEmail(referrerUser.email, referrerUser.username, user.username, 100).catch(() => {})
+      }
     }
+
+    // Send welcome email (fire-and-forget)
+    sendWelcomeEmail(user.email, user.username).catch(() => {})
 
     return NextResponse.json(user, { status: 201 })
   } catch (error) {

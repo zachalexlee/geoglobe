@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { randomBytes } from 'crypto'
+import { sendPasswordResetEmail } from '@/lib/email'
 
 export async function POST(request: Request) {
   try {
@@ -43,17 +44,19 @@ export async function POST(request: Request) {
     })
 
     // Build the reset URL
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://geoglobe-production.up.railway.app'
     const resetUrl = `${baseUrl}/auth/reset-password?token=${token}`
 
-    // TODO: Send email with reset link when email service is configured
-    // For now, log the reset link for development
-    console.log(`[PASSWORD RESET] Reset link for ${user.email}: ${resetUrl}`)
+    // Send the reset email
+    const emailResult = await sendPasswordResetEmail(user.email, user.username, resetUrl)
+    if (!emailResult.success) {
+      console.error(`[PASSWORD RESET] Failed to send email to ${user.email}:`, emailResult.error)
+    } else {
+      console.log(`[PASSWORD RESET] Email sent to ${user.email}`)
+    }
 
     return NextResponse.json({
       message: 'If an account with that email exists, a reset link has been sent.',
-      // Include reset URL in development for testing
-      ...(process.env.NODE_ENV === 'development' && { resetUrl }),
     })
   } catch (error) {
     console.error('Forgot password error:', error)

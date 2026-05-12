@@ -1,15 +1,18 @@
 /**
- * Notification stubs — these log what they would send.
- * In production, connect to an email service (e.g. Resend, SendGrid)
- * and a push notification service (e.g. web-push, OneSignal).
+ * Notification service — sends emails via Resend.
+ * Also provides a cron-compatible endpoint for batch sending daily reminders.
  */
 
 import { prisma } from '@/lib/prisma'
+import { sendDailyReminderEmail, sendStreakWarningEmail } from '@/lib/email'
 
+/**
+ * Send daily reminder to a specific user (if they have notifications enabled).
+ */
 export async function sendDailyReminder(userId: string): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, username: true, timezone: true, notifyEmail: true, notifyPush: true },
+    select: { email: true, username: true, streak: true, timezone: true, notifyEmail: true, notifyPush: true },
   })
 
   if (!user) {
@@ -18,27 +21,23 @@ export async function sendDailyReminder(userId: string): Promise<void> {
   }
 
   if (user.notifyEmail) {
-    console.log(
-      `[notifications] WOULD SEND EMAIL to ${user.email}: ` +
-      `"Hey ${user.username}! 🌍 Your daily GeoGlobe puzzle is ready. ` +
-      `Don't break your streak!" (timezone: ${user.timezone})`
-    )
+    const result = await sendDailyReminderEmail(user.email, user.username, user.streak)
+    if (result.success) {
+      console.log(`[notifications] Daily reminder sent to ${user.email}`)
+    } else {
+      console.error(`[notifications] Failed to send daily reminder to ${user.email}:`, result.error)
+    }
   }
 
   if (user.notifyPush) {
-    console.log(
-      `[notifications] WOULD SEND PUSH to ${user.username}: ` +
-      `"🌍 Daily puzzle is live! Play now to keep your streak going."`
-    )
-  }
-
-  if (!user.notifyEmail && !user.notifyPush) {
-    console.log(
-      `[notifications] sendDailyReminder: User ${user.username} has all notifications disabled`
-    )
+    // TODO: Wire up web-push when push subscription is implemented
+    console.log(`[notifications] Push notification stub for ${user.username}`)
   }
 }
 
+/**
+ * Send streak warning to a specific user (if they haven't played today and have a streak).
+ */
 export async function sendStreakWarning(userId: string): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -50,24 +49,96 @@ export async function sendStreakWarning(userId: string): Promise<void> {
     return
   }
 
+  if (user.streak === 0) return // no streak to warn about
+
   if (user.notifyEmail) {
-    console.log(
-      `[notifications] WOULD SEND EMAIL to ${user.email}: ` +
-      `"⚠️ ${user.username}, your ${user.streak}-day streak is about to end! ` +
-      `Play today's puzzle before midnight to keep it alive." (timezone: ${user.timezone})`
-    )
+    const result = await sendStreakWarningEmail(user.email, user.username, user.streak)
+    if (result.success) {
+      console.log(`[notifications] Streak warning sent to ${user.email}`)
+    } else {
+      console.error(`[notifications] Failed to send streak warning to ${user.email}:`, result.error)
+    }
   }
 
   if (user.notifyPush) {
-    console.log(
-      `[notifications] WOULD SEND PUSH to ${user.username}: ` +
-      `"⚠️ Your ${user.streak}-day streak ends tonight! Play now to save it."`
-    )
+    console.log(`[notifications] Push streak warning stub for ${user.username}`)
+  }
+}
+
+/**
+ * Batch send daily reminders to all users with notifications enabled
+ * who haven't played today yet. Call this from a cron job or API endpoint.
+ */
+export async function sendBatchDailyReminders(): Promise<{ sent: number; errors: number }> {
+  const todayStr = new Date().toISOString().split('T')[0]
+  const todayPuzzleId = `daily-${todayStr}`
+
+  // Find users who have email notifications enabled but haven't played today
+  const users = await prisma.user.findMany({
+    where: {
+      notifyEmail: true,
+      NOT: {
+        scores: {
+          some: { puzzleId: todayPuzzleId },
+        },
+      },
+    },
+    select: { id: true, email: true, username: true, streak: true },
+  })
+
+  let sent = 0
+  let errors = 0
+
+  for (const user of users) {
+    const result = await sendDailyReminderEmail(user.email, user.username, user.streak)
+    if (result.success) {
+      sent++
+    } else {
+      errors++
+    }
+    // Small delay to avoid rate limiting
+    await new Promise((resolve) => setTimeout(resolve, 100))
   }
 
-  if (!user.notifyEmail && !user.notifyPush) {
-    console.log(
-      `[notifications] sendStreakWarning: User ${user.username} has all notifications disabled`
-    )
+  console.log(`[notifications] Batch daily reminders: ${sent} sent, ${errors} errors out of ${users.length} users`)
+  return { sent, errors }
+}
+
+/**
+ * Batch send streak warnings to users who haven't played today and have an active streak.
+ * Best called in the evening (~6-8pm user's timezone).
+ */
+export async function sendBatchStreakWarnings(): Promise<{ sent: number; errors: number }> {
+  const todayStr = new Date().toISOString().split('T')[0]
+  const todayPuzzleId = `daily-${todayStr}`
+
+  // Find users with active streaks who haven't played today
+  const users = await prisma.user.findMany({
+    where: {
+      notifyEmail: true,
+      streak: { gt: 2 }, // Only warn for 3+ day streaks
+      NOT: {
+        scores: {
+          some: { puzzleId: todayPuzzleId },
+        },
+      },
+    },
+    select: { id: true, email: true, username: true, streak: true },
+  })
+
+  let sent = 0
+  let errors = 0
+
+  for (const user of users) {
+    const result = await sendStreakWarningEmail(user.email, user.username, user.streak)
+    if (result.success) {
+      sent++
+    } else {
+      errors++
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100))
   }
+
+  console.log(`[notifications] Batch streak warnings: ${sent} sent, ${errors} errors out of ${users.length} users`)
+  return { sent, errors }
 }
