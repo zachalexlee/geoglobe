@@ -64,8 +64,8 @@ export default function ResultsScreen({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-md mx-auto py-8 space-y-6">
+    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md overflow-y-auto overscroll-contain touch-auto">
+      <div className="w-full max-w-md mx-auto py-8 px-4 space-y-6 min-h-full flex flex-col justify-center">
         {/* Title */}
         <div className="text-center">
           <p className="text-white/40 text-sm uppercase tracking-widest mb-1">
