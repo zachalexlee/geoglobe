@@ -8,6 +8,7 @@ import {
   type ArcData,
   type MapStyle,
 } from '@/lib/globe-config'
+import { getSkinById, type GlobeSkin } from '@/lib/globe-skins'
 
 interface GlobeViewProps {
   onGlobeClick?: (coords: { lat: number; lng: number }) => void
@@ -15,6 +16,7 @@ interface GlobeViewProps {
   arcs?: ArcData[]
   disabled?: boolean
   mapStyle?: MapStyle
+  skinId?: string
 }
 
 export default function GlobeView({
@@ -23,10 +25,14 @@ export default function GlobeView({
   arcs = [],
   disabled = false,
   mapStyle = DEFAULT_MAP_STYLE,
+  skinId,
 }: GlobeViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const globeRef = useRef<any>(null)
+
+  // Resolve the skin
+  const skin: GlobeSkin | null = skinId ? getSkinById(skinId) : null
 
   // Store latest callback in a ref so the globe event handler is always up-to-date
   const onClickRef = useRef(onGlobeClick)
@@ -111,6 +117,22 @@ export default function GlobeView({
     if (!globeRef.current) return
     globeRef.current.globeTileEngineUrl(mapStyle.tileUrl)
   }, [mapStyle])
+
+  // ── Apply skin overrides ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!globeRef.current || !skin) return
+
+    // Apply skin atmosphere and background colors
+    globeRef.current.atmosphereColor(skin.atmosphereColor)
+
+    // If the skin has its own tile URL, use it; otherwise use static image
+    if (skin.tileUrl) {
+      globeRef.current.globeTileEngineUrl(skin.tileUrl)
+      globeRef.current.globeImageUrl('')
+    } else {
+      globeRef.current.globeImageUrl(skin.globeImageUrl)
+    }
+  }, [skin])
 
   // ── Sync pins (using HTML layer for fixed-size markers) ─────────────────────
   useEffect(() => {

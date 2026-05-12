@@ -17,6 +17,7 @@ interface PracticeMapSummary {
 
 type CategoryFilter = 'all' | 'capitals' | 'countries' | 'themed' | 'custom'
 type DifficultyFilter = 'all' | 'easy' | 'medium' | 'hard'
+type SourceFilter = 'all' | 'official' | 'community'
 
 const CATEGORY_TABS: { value: CategoryFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -31,6 +32,12 @@ const DIFFICULTY_TABS: { value: DifficultyFilter; label: string }[] = [
   { value: 'easy', label: 'Easy' },
   { value: 'medium', label: 'Medium' },
   { value: 'hard', label: 'Hard' },
+]
+
+const SOURCE_TABS: { value: SourceFilter; label: string }[] = [
+  { value: 'all', label: 'All Maps' },
+  { value: 'official', label: '★ Official' },
+  { value: 'community', label: '👥 Community' },
 ]
 
 function SkeletonCard() {
@@ -53,6 +60,7 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(true)
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>('all')
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all')
 
   useEffect(() => {
     async function fetchMaps() {
@@ -74,6 +82,12 @@ export default function PracticePage() {
     }
     fetchMaps()
   }, [categoryFilter, difficultyFilter])
+
+  const filteredMaps = maps.filter((map) => {
+    if (sourceFilter === 'official') return map.isOfficial
+    if (sourceFilter === 'community') return !map.isOfficial
+    return true
+  })
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -100,6 +114,26 @@ export default function PracticePage() {
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         {/* Filters */}
         <div className="space-y-3">
+          {/* Source tabs */}
+          <div>
+            <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Source</p>
+            <div className="flex flex-wrap gap-2">
+              {SOURCE_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setSourceFilter(tab.value)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                    sourceFilter === tab.value
+                      ? 'bg-indigo-600 border-indigo-500 text-white'
+                      : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Category tabs */}
           <div>
             <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Category</p>
@@ -144,7 +178,7 @@ export default function PracticePage() {
         {/* Map count */}
         {!loading && (
           <p className="text-white/30 text-sm">
-            {maps.length} map{maps.length !== 1 ? 's' : ''} found
+            {filteredMaps.length} map{filteredMaps.length !== 1 ? 's' : ''} found
           </p>
         )}
 
@@ -152,7 +186,7 @@ export default function PracticePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {loading
             ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-            : maps.map((map) => (
+            : filteredMaps.map((map) => (
                 <PracticeCard
                   key={map.id}
                   id={map.id}
@@ -168,7 +202,7 @@ export default function PracticePage() {
         </div>
 
         {/* Empty state */}
-        {!loading && maps.length === 0 && (
+        {!loading && filteredMaps.length === 0 && (
           <div className="text-center py-20 space-y-3">
             <p className="text-5xl">🗺️</p>
             <p className="text-white/50 text-lg font-semibold">No maps found</p>

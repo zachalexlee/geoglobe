@@ -21,6 +21,13 @@ model User {
   isPremium     Boolean   @default(false)
   premiumUntil  DateTime?
   region        String?
+  streakShields Int       @default(0)
+  selectedSkin  String    @default("satellite")
+  notifyEmail   Boolean   @default(false)
+  notifyPush    Boolean   @default(false)
+  timezone      String    @default("UTC")
+  referralCode  String?   @unique
+  referredById  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -30,6 +37,8 @@ model User {
   groupMembers  GroupMember[]
   accounts      Account[]
   sessions      Session[]
+  referralsMade Referral[] @relation("referrer")
+  referralsReceived Referral[] @relation("referred")
 }
 
 model Account {
@@ -164,6 +173,17 @@ model PracticeMap {
   createdAt   DateTime @default(now())
 }
 
+model Challenge {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  createdById String
+  locations   Json
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime?
+
+  @@index([code])
+}
+
 model Badge {
   id          String      @id @default(cuid())
   name        String      @unique
@@ -184,4 +204,70 @@ model UserBadge {
   badge Badge @relation(fields: [badgeId], references: [id])
 
   @@unique([userId, badgeId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model Referral {
+  id         String   @id @default(cuid())
+  referrerId String
+  referredId String
+  xpAwarded  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  referrer User @relation("referrer", fields: [referrerId], references: [id])
+  referred User @relation("referred", fields: [referredId], references: [id])
+
+  @@unique([referrerId, referredId])
+}
+
+model MultiplayerRoom {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  hostId       String
+  status       String   @default("waiting")
+  maxPlayers   Int      @default(8)
+  locations    Json
+  playerScores Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  @@index([code])
+}
+
+model Tournament {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("active")
+  prizes    Json     @default("[]")
+  createdAt DateTime @default(now())
+
+  entries TournamentEntry[]
+
+  @@index([status])
+  @@index([type, startDate])
+}
+
+model TournamentEntry {
+  id           String   @id @default(cuid())
+  tournamentId String
+  userId       String
+  score        Int      @default(0)
+  rank         Int?
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId, score])
 }

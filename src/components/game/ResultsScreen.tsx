@@ -1,8 +1,13 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import type { RoundResult } from '@/hooks/useGameState'
+import { getFactsForCity } from '@/lib/city-facts'
 import ShareCard from './ShareCard'
+import ChallengeButton from './ChallengeButton'
+
+const ReplayView = dynamic(() => import('./ReplayView'), { ssr: false })
 
 interface ResultsScreenProps {
   puzzleNumber: number
@@ -45,8 +50,18 @@ export default function ResultsScreen({
   streak = 0,
 }: ResultsScreenProps) {
   const countdown = useCountdown()
+  const [showReplay, setShowReplay] = useState(false)
 
   const pct = Math.round((totalScore / maxScore) * 100)
+
+  if (showReplay) {
+    return (
+      <ReplayView
+        roundResults={roundResults}
+        onClose={() => setShowReplay(false)}
+      />
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
@@ -109,6 +124,7 @@ export default function ResultsScreen({
           </p>
           {roundResults.map((result, i) => {
             const barWidth = Math.round((result.score / 100) * 100)
+            const facts = getFactsForCity(result.location.name)
             return (
               <div
                 key={result.location.id}
@@ -146,10 +162,29 @@ export default function ResultsScreen({
                     }}
                   />
                 </div>
+                {/* Learning mode: Fun facts */}
+                {facts && (
+                  <div className="mt-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-3 py-2">
+                    <p className="text-indigo-300 text-xs font-semibold mb-1">💡 Did you know?</p>
+                    {facts.map((fact, fi) => (
+                      <p key={fi} className="text-white/60 text-xs leading-relaxed">
+                        • {fact}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}
         </div>
+
+        {/* Watch Replay button */}
+        <button
+          onClick={() => setShowReplay(true)}
+          className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+        >
+          🎬 Watch Replay
+        </button>
 
         {/* Share card */}
         <ShareCard
@@ -158,6 +193,9 @@ export default function ResultsScreen({
           roundResults={roundResults}
           streak={streak}
         />
+
+        {/* Challenge a Friend */}
+        <ChallengeButton />
 
         {/* Next puzzle countdown */}
         <div className="text-center">

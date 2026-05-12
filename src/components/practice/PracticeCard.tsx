@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 
 interface PracticeCardProps {
   id: string
@@ -73,6 +74,17 @@ export default function PracticeCard({
 }: PracticeCardProps) {
   const cat = CATEGORY_STYLES[category] ?? CATEGORY_STYLES.custom
   const diff = DIFFICULTY_STYLES[difficulty] ?? DIFFICULTY_STYLES.medium
+  const [copied, setCopied] = useState(false)
+
+  function handleShare(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const url = `${window.location.origin}/practice/${id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   return (
     <div className="group relative bg-white/5 hover:bg-white/8 border border-white/10 hover:border-white/20 rounded-2xl p-5 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg hover:shadow-black/40 hover:-translate-y-0.5">
@@ -86,8 +98,19 @@ export default function PracticeCard({
         </span>
       )}
 
+      {/* Share button for community maps */}
+      {!isOfficial && (
+        <button
+          onClick={handleShare}
+          className="absolute top-3 right-3 text-white/40 hover:text-white text-xs px-2 py-1 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+          title="Copy link"
+        >
+          {copied ? '✓ Copied' : '🔗 Share'}
+        </button>
+      )}
+
       {/* Header */}
-      <div className="pr-5">
+      <div className="pr-16">
         <h3 className="text-white font-bold text-base leading-snug">{name}</h3>
         {description && (
           <p className="text-white/50 text-xs mt-1 leading-relaxed line-clamp-2">
@@ -108,6 +131,11 @@ export default function PracticeCard({
         >
           {diff.label}
         </span>
+        {!isOfficial && (
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border bg-cyan-500/15 text-cyan-400 border-cyan-500/30">
+            Community
+          </span>
+        )}
       </div>
 
       {/* Stats row */}

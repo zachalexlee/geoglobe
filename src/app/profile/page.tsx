@@ -5,6 +5,7 @@ import { levelFromXp, xpInCurrentLevel, xpToNextLevel as calcXpToNext } from '@/
 import { getPuzzleNumber } from '@/lib/daily-cities'
 import XpBar from '@/components/profile/XpBar'
 import BadgeGrid from '@/components/profile/BadgeGrid'
+import BadgeProgress from '@/components/profile/BadgeProgress'
 import Link from 'next/link'
 
 export const metadata = {
@@ -52,6 +53,26 @@ export default async function ProfilePage() {
   })
 
   const gamesPlayed = await prisma.score.count({ where: { userId } })
+
+  // Fetch data for badge progress
+  const allScores = await prisma.score.findMany({
+    where: { userId },
+    select: { totalScore: true, roundScores: true, distances: true },
+  })
+
+  let hasPerfectRound = false
+  let hasPerfectGame = false
+  let bestDistanceKm: number | null = null
+
+  for (const s of allScores) {
+    if (s.totalScore >= 500) hasPerfectGame = true
+    const rs = Array.isArray(s.roundScores) ? (s.roundScores as number[]) : []
+    if (rs.some((r) => r >= 100)) hasPerfectRound = true
+    const dists = Array.isArray(s.distances) ? (s.distances as number[]) : []
+    for (const d of dists) {
+      if (bestDistanceKm === null || d < bestDistanceKm) bestDistanceKm = d
+    }
+  }
 
   const level = levelFromXp(user.xp)
   const xpCurrent = xpInCurrentLevel(user.xp)
@@ -168,9 +189,58 @@ export default async function ProfilePage() {
           ))}
         </section>
 
+        {/* ── Streak Shields ── */}
+        <section className="bg-zinc-900 border border-white/5 rounded-2xl p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🛡️</span>
+              <div>
+                <p className="text-white font-bold text-sm">Streak Shields</p>
+                <p className="text-zinc-500 text-xs">Protects your streak if you miss a day</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-white text-2xl font-extrabold tabular-nums">
+                {user.streakShields}
+              </p>
+              <p className="text-zinc-600 text-xs">available</p>
+            </div>
+          </div>
+          {!user.isPremium && (
+            <p className="mt-3 text-xs text-zinc-600 border-t border-white/5 pt-3">
+              ⭐ Premium members earn streak shields automatically. Upgrade to PRO for protection!
+            </p>
+          )}
+        </section>
+
+        {/* ── Globe Skin ── */}
+        <section className="bg-zinc-900 border border-white/5 rounded-2xl p-5">
+          <p className="text-zinc-500 text-xs uppercase tracking-widest mb-3">Globe Skin</p>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🌍</span>
+            <div>
+              <p className="text-white font-semibold text-sm capitalize">{user.selectedSkin}</p>
+              <p className="text-zinc-500 text-xs">Current globe appearance</p>
+            </div>
+          </div>
+        </section>
+
         {/* ── Badges ── */}
         <section className="bg-zinc-900 border border-white/5 rounded-2xl p-5">
           <BadgeGrid badges={badges} />
+        </section>
+
+        {/* ── Badge Progress ── */}
+        <section className="bg-zinc-900 border border-white/5 rounded-2xl p-5">
+          <BadgeProgress
+            gamesPlayed={gamesPlayed}
+            streak={user.streak}
+            level={level}
+            hasPerfectRound={hasPerfectRound}
+            hasPerfectGame={hasPerfectGame}
+            bestDistanceKm={bestDistanceKm}
+            earnedBadgeNames={new Set(badges.map((b: { name: string }) => b.name))}
+          />
         </section>
 
         {/* ── Recent Scores ── */}
@@ -254,6 +324,39 @@ export default async function ProfilePage() {
             🌍 Play Today&apos;s Puzzle
           </Link>
         </div>
+
+        {/* ── Quick Links ── */}
+        <section className="bg-zinc-900 border border-white/5 rounded-2xl p-5">
+          <p className="text-zinc-500 text-xs uppercase tracking-widest mb-4">Settings & More</p>
+          <div className="space-y-2">
+            <Link
+              href="/profile/notifications"
+              className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg">🔔</span>
+                <div>
+                  <p className="text-white text-sm font-medium">Notification Settings</p>
+                  <p className="text-zinc-500 text-xs">Email & push reminders</p>
+                </div>
+              </div>
+              <span className="text-zinc-600">→</span>
+            </Link>
+            <Link
+              href="/profile/referrals"
+              className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg">🎁</span>
+                <div>
+                  <p className="text-white text-sm font-medium">Referrals</p>
+                  <p className="text-zinc-500 text-xs">Invite friends, earn XP</p>
+                </div>
+              </div>
+              <span className="text-zinc-600">→</span>
+            </Link>
+          </div>
+        </section>
       </main>
     </div>
   )

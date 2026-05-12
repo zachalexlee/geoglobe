@@ -50,6 +50,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    if (locations.length < 5) {
+      return NextResponse.json({ error: 'Minimum 5 cities required' }, { status: 400 })
+    }
+    if (locations.length > 20) {
+      return NextResponse.json({ error: 'Maximum 20 cities allowed' }, { status: 400 })
+    }
+
     const VALID_CATEGORIES = ['capitals', 'countries', 'themed', 'custom']
     const VALID_DIFFICULTIES = ['easy', 'medium', 'hard']
 

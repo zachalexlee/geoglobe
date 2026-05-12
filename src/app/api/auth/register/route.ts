@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, username, password } = await req.json()
+    const { email, username, password, referralCode } = await req.json()
 
     if (!email || !username || !password) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
@@ -20,11 +20,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email or username already taken' }, { status: 409 })
     }
 
+    // Check if referral code is valid
+    let referrer: { id: string } | null = null
+    if (referralCode && typeof referralCode === 'string') {
+      referrer = await prisma.user.findUnique({
+        where: { referralCode },
+        select: { id: true },
+      })
+      // We don't error if referral code is invalid — just ignore it
+    }
+
     const passwordHash = await bcrypt.hash(password, 12)
     const user = await prisma.user.create({
-      data: { email, username, passwordHash },
+      data: {
+        email,
+        username,
+        passwordHash,
+        referredById: referrer?.id ?? undefined,
+        // Give 50 XP bonus to new user if they used a valid referral code
+        xp: referrer ? 50 : 0,
+      },
       select: { id: true, email: true, username: true },
     })
+
+    // If valid referral, create referral record and award XP to referrer
+    if (referrer) {
+      await prisma.referral.create({
+        data: {
+          referrerId: referrer.id,
+          referredId: user.id,
+          xpAwarded: 100,
+        },
+      })
+
+      // Award 100 XP to the referrer
+      await prisma.user.update({
+        where: { id: referrer.id },
+        data: { xp: { increment: 100 } },
+      })
+    }
 
     return NextResponse.json(user, { status: 201 })
   } catch (error) {

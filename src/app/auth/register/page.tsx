@@ -1,18 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [referralCode, setReferralCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref) setReferralCode(ref)
+  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -28,7 +35,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, username, password }),
+        body: JSON.stringify({ email, username, password, referralCode: referralCode || undefined }),
       })
 
       const data = await res.json()
@@ -125,6 +132,22 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* Referral Code */}
+          <div>
+            <label htmlFor="referral" className="block text-sm font-medium text-gray-300 mb-1">
+              Referral Code <span className="text-gray-500">(optional)</span>
+            </label>
+            <input
+              id="referral"
+              type="text"
+              maxLength={6}
+              value={referralCode}
+              onChange={(e) => setReferralCode(e.target.value)}
+              className="w-full rounded-lg bg-gray-800 border border-gray-700 text-white px-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter a friend's code"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -176,5 +199,17 @@ export default function RegisterPage() {
         </p>
       </div>
     </main>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+        <div className="animate-pulse text-gray-500">Loading...</div>
+      </main>
+    }>
+      <RegisterForm />
+    </Suspense>
   )
 }

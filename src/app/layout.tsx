@@ -15,9 +15,36 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://geoglobe-production.up.railway.app";
+
 export const metadata: Metadata = {
   title: "GeoGlobe — Daily Geography Game",
   description: "A daily geography game — explore history, one pin at a time.",
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    title: "GeoGlobe — Daily Geography Game",
+    description: "A daily geography game — explore history, one pin at a time.",
+    url: siteUrl,
+    siteName: "GeoGlobe",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "GeoGlobe — Daily Geography Game",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GeoGlobe — Daily Geography Game",
+    description: "A daily geography game — explore history, one pin at a time.",
+    images: ["/og-image.png"],
+  },
+  manifest: "/manifest.json",
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({

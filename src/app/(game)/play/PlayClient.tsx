@@ -8,7 +8,10 @@ import LocationCard from '@/components/game/LocationCard'
 import ScoreDisplay from '@/components/game/ScoreDisplay'
 import ResultsScreen from '@/components/game/ResultsScreen'
 import MapStylePicker from '@/components/globe/MapStylePicker'
+import HintButton from '@/components/game/HintButton'
 import { DEFAULT_MAP_STYLE, type Pin, type ArcData, type MapStyle } from '@/lib/globe-config'
+import { getFactsForCity } from '@/lib/city-facts'
+import type { HintLevel } from '@/lib/hint-system'
 
 const GlobeView = dynamic(
   () => import('@/components/globe/GlobeView').catch(() => {
@@ -42,6 +45,10 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
   } = useGameState()
 
   const [mapStyle, setMapStyle] = useState<MapStyle>(DEFAULT_MAP_STYLE)
+  const [hintsEnabled, setHintsEnabled] = useState(false)
+  const [hintText, setHintText] = useState<string | null>(null)
+  const [hintPenalty, setHintPenalty] = useState(0)
+  const [hintLevel, setHintLevel] = useState<HintLevel>(0)
 
   // ── Init game with server-fetched puzzle data ──────────────────────────────
   useEffect(() => {
@@ -186,11 +193,73 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
       <MapStylePicker selected={mapStyle} onChange={setMapStyle} />
 
       {currentLocation && state.phase !== 'final-result' && (
-        <LocationCard
-          location={currentLocation}
-          roundNumber={state.currentRound + 1}
-          totalRounds={TOTAL_ROUNDS}
-        />
+        <>
+          {hintsEnabled ? (
+            <div className="fixed z-40 left-4 bottom-20 md:bottom-8 md:left-6 w-[calc(100vw-2rem)] md:w-80">
+              <div className="bg-black/75 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">
+                    Round {state.currentRound + 1}/{TOTAL_ROUNDS}
+                  </span>
+                  <button
+                    onClick={() => setHintsEnabled(false)}
+                    className="text-teal-400 text-xs hover:text-teal-300 transition-colors"
+                  >
+                    Show city
+                  </button>
+                </div>
+                <div className="px-4 pb-3 space-y-2">
+                  {hintLevel === 0 ? (
+                    <h2 className="text-white/50 font-bold text-xl">📍 ???</h2>
+                  ) : (
+                    <h2 className="text-white font-bold text-xl">
+                      📍 {hintText}
+                    </h2>
+                  )}
+                  <HintButton
+                    cityName={currentLocation.name}
+                    country={currentLocation.country}
+                    onPenaltyChange={(p) => setHintPenalty(p)}
+                    onHintRevealed={(text, level) => {
+                      setHintText(text)
+                      setHintLevel(level)
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <LocationCard
+              location={currentLocation}
+              roundNumber={state.currentRound + 1}
+              totalRounds={TOTAL_ROUNDS}
+            />
+          )}
+        </>
+      )}
+
+      {/* Hints toggle */}
+      {state.phase === 'playing' && (
+        <div className="fixed top-20 right-4 z-40">
+          <button
+            onClick={() => {
+              setHintsEnabled((v) => !v)
+              // Reset hint state when toggling on
+              if (!hintsEnabled) {
+                setHintText(null)
+                setHintPenalty(0)
+                setHintLevel(0)
+              }
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+              hintsEnabled
+                ? 'bg-teal-600/80 border-teal-500/50 text-white'
+                : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            💡 Hints {hintsEnabled ? 'ON' : 'OFF'}
+          </button>
+        </div>
       )}
 
       {state.pendingGuess && state.phase === 'playing' && (
@@ -219,12 +288,33 @@ export default function PlayClient({ puzzle }: PlayClientProps) {
       )}
 
       {state.phase === 'round-result' && lastResult && (
-        <ScoreDisplay
-          distanceKm={lastResult.distanceKm}
-          score={lastResult.score}
-          color={lastResult.color}
-          onDismiss={nextRound}
-        />
+        <>
+          <ScoreDisplay
+            distanceKm={lastResult.distanceKm}
+            score={lastResult.score}
+            color={lastResult.color}
+            onDismiss={nextRound}
+          />
+          {/* Learning mode: fun fact card */}
+          {(() => {
+            const facts = getFactsForCity(lastResult.location.name)
+            if (!facts) return null
+            return (
+              <div className="fixed bottom-24 inset-x-0 z-40 flex justify-center px-4">
+                <div className="max-w-sm w-full bg-black/80 backdrop-blur-md border border-indigo-500/20 rounded-xl px-4 py-3">
+                  <p className="text-indigo-300 text-xs font-semibold mb-1.5">
+                    💡 Fun fact about {lastResult.location.name}
+                  </p>
+                  {facts.map((fact, i) => (
+                    <p key={i} className="text-white/60 text-xs leading-relaxed">
+                      • {fact}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+        </>
       )}
 
       {state.phase === 'final-result' && (

@@ -7,6 +7,9 @@ import { useState } from 'react'
 
 const navLinks = [
   { label: 'Play', href: '/play' },
+  { label: 'Time Attack', href: '/time-attack' },
+  { label: 'Rooms', href: '/rooms' },
+  { label: 'Tournaments', href: '/tournaments' },
   { label: 'Leaderboard', href: '/leaderboard' },
   { label: 'Groups', href: '/groups' },
   { label: 'Practice', href: '/practice' },

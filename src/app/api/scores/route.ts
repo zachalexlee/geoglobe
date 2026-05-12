@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       // Streak logic
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { streak: true, longestStreak: true, xp: true },
+        select: { streak: true, longestStreak: true, xp: true, streakShields: true },
       })
 
       if (!user) {
@@ -112,8 +112,15 @@ export async function POST(req: NextRequest) {
         },
       })
 
+      let shieldUsed = false
+
       if (yesterdayScore) {
+        // Played yesterday — continue streak
         newStreak = user.streak + 1
+      } else if (user.streak > 0 && user.streakShields > 0) {
+        // Missed yesterday but has a streak shield — auto-use shield to preserve streak
+        newStreak = user.streak + 1
+        shieldUsed = true
       } else {
         // Starting a new streak (or first play)
         newStreak = 1
@@ -127,6 +134,7 @@ export async function POST(req: NextRequest) {
           xp: { increment: xpGain },
           streak: newStreak,
           longestStreak: newLongestStreak,
+          ...(shieldUsed ? { streakShields: { decrement: 1 } } : {}),
         },
       })
     } else {
